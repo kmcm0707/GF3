@@ -1,8 +1,20 @@
 ### WEEKEND DECODER
 
+import numpy
+
 # Load file1.csv and channel.csv as vectors
 
+file1 = open('file1.csv')
+to_decode = file1.split(",\n")
+
+channel_file = open('channel.csv')
+channel = channel_file.split(",\n")
+
 # Split into 1056 bit length OFDM 'symbols'
+
+symbol_len = 1056
+
+symbols = []
 
 # Remove first 32 elements of each 'symbol'
 
@@ -14,5 +26,5 @@
 
 # Match each conselation symbol to the bits (Gray code)
 
-# Convert to .txt (how, not sure!)
+# Remove header + Convert to .txt (how, not sure!)
 
