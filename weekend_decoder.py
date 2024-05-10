@@ -14,36 +14,24 @@ channel = dataframe2.to_numpy()
 # Split into 1056 bit length OFDM 'symbols'
 
 symbol_len = 1056
-print(to_decode.shape)
+no_symbols = len(to_decode) / symbol_len
 symbols = np.split(to_decode, len(to_decode)/symbol_len)
 
-print(len(symbols[0]))
 # Remove first 32 elements of each 'symbol' (cyclic prefix)
 
 for index, i in enumerate(symbols):
     symbols[index] = i[31:]
 
-print(len(symbols[0]))
 # DFT of each 'symbol' (...should be complex)
-symbols_freq = np.ones((950, 1025))
+
+symbols_freq = np.ones((no_symbols, 1025))
 symbols_freq = symbols_freq.astype(complex)
-print(symbols_freq.shape)
+
 for index, i in enumerate(symbols):
     temp = np.reshape(i, 1025)
     symbols_freq[index] = np.fft.fft(temp)
-"""
-print(symbols_freq.shape)
-print(to_decode.shape)
-to_decode = np.delete(to_decode, 1)
-print(to_decode.shape)
-to_decode_freq = np.fft.fft(to_decode)
-print(to_decode_freq.shape)
-symbols_freq_2 = np.split(to_decode_freq, len(to_decode_freq)/1056)"""
 
-"""for index, i in enumerate(symbols_freq_2):
-    symbols_freq_2[index] = i[31:]"""
 
-print(symbols_freq.shape)
 
 assert np.round(symbols_freq[0][1], 5) == np.round(np.conjugate(symbols_freq[0][-1]), 5)
 
@@ -52,7 +40,7 @@ assert np.round(symbols_freq[0][1], 5) == np.round(np.conjugate(symbols_freq[0][
 channel = np.delete(channel, 1)
 
 channel = np.pad(channel, (0, 1025 - len(channel)), "constant")
-#channel_2 = 
+
 channel_freq = np.fft.fft(channel)
 
 recieved_freq = symbols_freq / channel_freq
