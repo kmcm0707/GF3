@@ -5,7 +5,7 @@ import pandas as pd
 
 # Load file1.csv and channel.csv as vectors
 
-dataframe1 = pd.read_csv('file1.csv', header=None)
+dataframe1 = pd.read_csv('file3.csv', header=None)
 to_decode = dataframe1.to_numpy()
 
 dataframe2 = pd.read_csv('channel.csv', header=None)
