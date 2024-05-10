@@ -1,22 +1,33 @@
 ### WEEKEND DECODER
 
-import numpy
+import numpy as np
+import pandas as pd
 
 # Load file1.csv and channel.csv as vectors
 
-file1 = open('file1.csv')
-to_decode = file1.split(",\n")
+dataframe1 = pd.read_csv('file1.csv', header=None)
+to_decode = dataframe1.to_numpy()
 
-channel_file = open('channel.csv')
-channel = channel_file.split(",\n")
+dataframe2 = pd.read_csv('file1.csv', header=None)
+channel = dataframe2.to_numpy()
 
 # Split into 1056 bit length OFDM 'symbols'
 
 symbol_len = 1056
 
-symbols = []
+symbols = np.split(to_decode, symbol_len)
 
-# Remove first 32 elements of each 'symbol'
+print(len(symbols[0]))
+
+
+# Remove first 32 elements of each 'symbol' (cyclic prefix)
+
+symbols = symbols[:][32:]
+
+# for index, i in enumerate(symbols):
+#     symbols[index] = i[31:]
+
+print(len(symbols[0]))
 
 # DFT of each 'symbol' (...should be complex)
 
