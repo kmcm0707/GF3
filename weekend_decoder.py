@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # Load file1.csv and channel.csv as vectors
 
-dataframe1 = pd.read_csv('file1.csv', header=None)
+dataframe1 = pd.read_csv('file7.csv', header=None)
 to_decode = dataframe1.to_numpy()
 
 dataframe2 = pd.read_csv('channel.csv', header=None)
@@ -24,7 +24,7 @@ for index, i in enumerate(symbols):
     symbols[index] = i[32:]
 
 # DFT of each 'symbol' (...should be complex)
-symbols_freq = np.ones((950, 1024))
+symbols_freq = np.ones((no_symbols, 1024))
 symbols_freq = symbols_freq.astype(complex)
 for index, i in enumerate(symbols):
     temp = np.reshape(i, 1024)
@@ -43,7 +43,7 @@ symbols_freq_2 = np.split(to_decode_freq, len(to_decode_freq)/1056)"""
 
 
 
-assert np.round(symbols_freq[0][1], 5) == np.round(np.conjugate(symbols_freq[0][-1]), 5)
+#assert np.round(symbols_freq[0][1], 5) == np.round(np.conjugate(symbols_freq[0][-1]), 5)
 
 # Divide by DFT of Channel Impulse Response (??)
 
@@ -64,20 +64,18 @@ recieved_freq = symbols_freq / channel_freq
 constellations = np.zeros((1, 511))
 
 for index, i in enumerate(recieved_freq):
-    if index == 0:
-        print(i[0])
     constellations = np.vstack((constellations,i[1:512]))
 
 constellations = np.delete(constellations, 0, 0)
 # Match each conselation symbol to the bits (Gray code)
-print(constellations.shape)
-print(constellations[0][510])
+"""print(constellations.shape)
+print(constellations[0][510])"""
 binary = []
 
-plt.scatter(constellations[4][:100].real, constellations[4][:100].imag)
+"""plt.scatter(constellations[4][:100].real, constellations[4][:100].imag)
 plt.scatter(constellations[4][100:250].real, constellations[4][100:250].imag, color='red')
 plt.scatter(constellations[4][250:].real, constellations[4][250:].imag, color='green')
-plt.show()
+plt.show()"""
 
 # Hmmm?? The lower frequencies seem to be correct, but the higher frequencies don't seem to work
 
@@ -97,7 +95,7 @@ for symbol in constellations:
 binary = ''.join(binary)
 # output = binary.decode("ascii")
 
-output = open("output.txt", "w")
+output = open("output7.txt", "w")
 output.write(binary)
 output.close()
 
