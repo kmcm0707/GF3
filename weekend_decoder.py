@@ -76,7 +76,7 @@ binary = []
 plt.scatter(constellations[4][100:250].real, constellations[4][100:250].imag, color='red')
 plt.scatter(constellations[4][250:].real, constellations[4][250:].imag, color='green')
 plt.show()
-
+"""
 for symbol in constellations:
     for i in symbol:
         if np.real(i) >= 0 and np.imag(i) >= 0:
