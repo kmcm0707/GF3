@@ -5,7 +5,7 @@ import pandas as pd
 
 # Load file1.csv and channel.csv as vectors
 
-dataframe1 = pd.read_csv('file3.csv', header=None)
+dataframe1 = pd.read_csv('file7.csv', header=None)
 to_decode = dataframe1.to_numpy()
 
 dataframe2 = pd.read_csv('channel.csv', header=None)
@@ -14,7 +14,7 @@ channel = dataframe2.to_numpy()
 # Split into 1056 bit length OFDM 'symbols'
 
 symbol_len = 1056
-no_symbols = len(to_decode) / symbol_len
+no_symbols = int(len(to_decode) / symbol_len)
 symbols = np.split(to_decode, len(to_decode)/symbol_len)
 
 # Remove first 32 elements of each 'symbol' (cyclic prefix)
@@ -31,7 +31,7 @@ for index, i in enumerate(symbols):
     temp = np.reshape(i, 1025)
     symbols_freq[index] = np.fft.fft(temp)
 
-
+    
 
 assert np.round(symbols_freq[0][1], 5) == np.round(np.conjugate(symbols_freq[0][-1]), 5)
 
