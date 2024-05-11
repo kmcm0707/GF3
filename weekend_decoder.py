@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # Load file1.csv and channel.csv as vectors
 
@@ -31,8 +32,6 @@ for index, i in enumerate(symbols):
     temp = np.reshape(i, 1025)
     symbols_freq[index] = np.fft.fft(temp)
 
-    
-
 assert np.round(symbols_freq[0][1], 5) == np.round(np.conjugate(symbols_freq[0][-1]), 5)
 
 # Divide by DFT of Channel Impulse Response (??)
@@ -55,6 +54,13 @@ for index, i in enumerate(recieved_freq):
 # Match each conselation symbol to the bits (Gray code)
 
 binary = []
+
+plt.scatter(constellations[4][:100].real, constellations[4][:100].imag)
+plt.scatter(constellations[4][100:250].real, constellations[4][100:250].imag, color='red')
+plt.scatter(constellations[4][250:].real, constellations[4][250:].imag, color='green')
+plt.show()
+
+# Hmmm?? The lower frequencies seem to be correct, but the higher frequencies don't seem to work
 
 for symbol in constellations:
     for i in symbol:
