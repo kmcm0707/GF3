@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # Load file1.csv and channel.csv as vectors
 
-dataframe1 = pd.read_csv('file1.csv', header=None)
+dataframe1 = pd.read_csv('file8.csv', header=None)
 to_decode = dataframe1.to_numpy()
 
 dataframe2 = pd.read_csv('channel.csv', header=None)
@@ -24,7 +24,7 @@ for index, i in enumerate(symbols):
     symbols[index] = i[32:]
 
 # DFT of each 'symbol' (...should be complex)
-symbols_freq = np.ones((950, 1024))
+symbols_freq = np.ones((no_symbols, 1024))
 symbols_freq = symbols_freq.astype(complex)
 for index, i in enumerate(symbols):
     temp = np.reshape(i, 1024)
@@ -78,8 +78,6 @@ plt.scatter(constellations[4][:100].real, constellations[4][:100].imag)
 plt.scatter(constellations[4][100:250].real, constellations[4][100:250].imag, color='red')
 plt.scatter(constellations[4][250:].real, constellations[4][250:].imag, color='green')
 plt.show()
-
-# Hmmm?? The lower frequencies seem to be correct, but the higher frequencies don't seem to work
 
 for symbol in constellations:
     for i in symbol:
