@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 # Load file1.csv and channel.csv as vectors
 
@@ -14,16 +15,14 @@ channel = dataframe2.to_numpy()
 # Split into 1056 bit length OFDM 'symbols'
 
 symbol_len = 1056
-print(to_decode.shape)
+no_symbols = int(len(to_decode) / symbol_len)
 symbols = np.split(to_decode, len(to_decode)/symbol_len)
 
-print(len(symbols[0]))
 # Remove first 32 elements of each 'symbol' (cyclic prefix)
 
 for index, i in enumerate(symbols):
     symbols[index] = i[32:]
 
-print(len(symbols[0]))
 # DFT of each 'symbol' (...should be complex)
 symbols_freq = np.ones((950, 1024))
 symbols_freq = symbols_freq.astype(complex)
@@ -74,6 +73,13 @@ constellations = np.delete(constellations, 0, 0)
 print(constellations.shape)
 print(constellations[0][510])
 binary = []
+
+plt.scatter(constellations[4][:100].real, constellations[4][:100].imag)
+plt.scatter(constellations[4][100:250].real, constellations[4][100:250].imag, color='red')
+plt.scatter(constellations[4][250:].real, constellations[4][250:].imag, color='green')
+plt.show()
+
+# Hmmm?? The lower frequencies seem to be correct, but the higher frequencies don't seem to work
 
 for symbol in constellations:
     for i in symbol:
