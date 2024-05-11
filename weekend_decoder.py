@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # Load file1.csv and channel.csv as vectors
 
-dataframe1 = pd.read_csv('file7.csv', header=None)
+dataframe1 = pd.read_csv('file8.csv', header=None)
 to_decode = dataframe1.to_numpy()
 
 dataframe2 = pd.read_csv('channel.csv', header=None)
@@ -75,9 +75,7 @@ binary = []
 """plt.scatter(constellations[4][:100].real, constellations[4][:100].imag)
 plt.scatter(constellations[4][100:250].real, constellations[4][100:250].imag, color='red')
 plt.scatter(constellations[4][250:].real, constellations[4][250:].imag, color='green')
-plt.show()"""
-
-# Hmmm?? The lower frequencies seem to be correct, but the higher frequencies don't seem to work
+plt.show()
 
 for symbol in constellations:
     for i in symbol:
