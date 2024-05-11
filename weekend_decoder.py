@@ -98,4 +98,4 @@ output.write(binary)
 output.close()
 
 # Remove header + Convert to .txt (how, not sure!)
-
+# Remove header - manually and convert in reader.py
