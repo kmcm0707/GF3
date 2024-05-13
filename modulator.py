@@ -52,11 +52,12 @@ f = 4000.0  # sine frequency, Hz, may be float
 # #samples = (np.sin(2 * np.pi * np.arange(fs * duration) * f / fs)).astype(np.float32)
 
 # generate chirp signal
-t = np.linspace(0, int(duration), int(fs*duration), endpoint=False)
+#t = np.linspace(0, int(duration), int(fs*duration), endpoint=False)
 #samples = signal.chirp(t, f0=0, f1=16000, t1=int(duration), method='linear').astype(np.float32)
 # per @yahweh comment explicitly convert to bytes sequence
-output_bytes = (volume * time_data).tobytes()
-print(len(output_bytes))
+print(time_data)
+output_bytes = (volume * time_data).astype(np.float32).tobytes()
+
 
 # for paFloat32 sample values must be in range [-1.0, 1.0]
 stream = p.open(format=pyaudio.paFloat32,
