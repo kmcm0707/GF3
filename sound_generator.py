@@ -4,9 +4,9 @@ import pyaudio
 import scipy.signal as signal
 import pandas as pd
 
+fs = 44100 # Sampling frequency
 
-
-def generate_sound(samples, volume, fs): # range [0.0, 1.0]
+def generate_sound(samples, volume, fs): # volume range [0.0, 1.0]
 
     p = pyaudio.PyAudio()
     time.sleep(1)
@@ -30,13 +30,10 @@ def generate_sound(samples, volume, fs): # range [0.0, 1.0]
     p.terminate()
 
 
-
-volume = 0.5  
-fs = 44100  # sampling rate, Hz, must be integer
 duration = 10.0  # in seconds, may be float
 f = 4000.0  # sine frequency, Hz, may be float
 
-# generate samples, note conversion to float32 array
+# generate samples from file1, note conversion to float32 array
 dataframe1 = pd.read_csv('weekend_files/file1.csv', header=None)
 to_decode = dataframe1.to_numpy()
 samples = np.reshape(to_decode, len(to_decode)).astype(np.float32)
