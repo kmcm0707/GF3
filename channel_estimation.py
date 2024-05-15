@@ -10,9 +10,10 @@ def cross_power_spectrum_channel_estimation(x, y):
     # nfft is the number of points to use in the fft
     #nspre is the number of points to overlap in the fft
     cross_power = signal.csd(x, y, fs=44100, nfft=44100, return_onesided=False)
+    print(cross_power)
     x_power = signal.welch(x, fs=44100, nfft=44100, return_onesided=False)
 
-    return cross_power / x_power
+    return cross_power[1] / x_power[1]
 
 def standered_estimation(x, y):
     # x and y are the time signals to be compared
@@ -60,6 +61,7 @@ if __name__ == "__main__":
     check = np.reshape(check, len(check))
     check = check[2000:160000]
     #plt.plot(check)
+
     #plt.show()
     #check = np.pad(check, (0, len(x) - len(check)))
     FFT_check = np.fft.fft(check, n=44100)
@@ -70,6 +72,7 @@ if __name__ == "__main__":
     """plt.plot(frequencies,20 *np.log10(np.abs(np.fft.fft(y, n=441000))))
     plt.show()"""
     plt.plot(frequencies,20 *np.log10(np.abs(chanel_estimation)))
+    plt.savefig('channel_response_easy.png')
     plt.show()
 
     plt.plot(time)
