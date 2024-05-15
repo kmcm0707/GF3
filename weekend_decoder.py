@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 
 # Load file1.csv and channel.csv as vectors
 
-dataframe1 = pd.read_csv('file8.csv', header=None)
+dataframe1 = pd.read_csv('weekend_files/file8.csv', header=None)
 to_decode = dataframe1.to_numpy()
 
-dataframe2 = pd.read_csv('channel.csv', header=None)
+dataframe2 = pd.read_csv('weekend_files/channel.csv', header=None)
 channel = dataframe2.to_numpy()
 
 # Split into 1056 bit length OFDM 'symbols'
@@ -53,7 +53,8 @@ channel = np.pad(channel, (0, 1024 - len(channel)), "constant")
 
 #channel_2 = 
 channel_freq = np.fft.fft(channel)
-
+plt.plot(np.abs(channel_freq))
+plt.show()
 print(symbols_freq[0][0])
 print(symbols_freq[0][1])
 print(symbols_freq[0][1023])

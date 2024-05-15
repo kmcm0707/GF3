@@ -44,9 +44,10 @@ samples = np.reshape(to_decode, len(to_decode)).astype(np.float32)
 t = np.linspace(0, int(duration), int(fs*duration), endpoint=False)"""
 #samples = signal.chirp(t, f0=0, f1=16000, t1=int(duration), method='linear').astype(np.float32)
 # per @yahweh comment explicitly convert to bytes sequence
-duration = 10.0  # in seconds, may be float
+duration = 5.0  # in seconds, may be float
 fs = 44100  # sampling rate, Hz, must be integer
 t = np.linspace(0, int(duration), int(fs*duration), endpoint=False)
-samples = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
-generate_sound(samples, 0.5, fs)
+#samples = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
+sin = np.sin(2 * np.pi * np.arange(fs * duration) * 4000 / fs).astype(np.float32)
+generate_sound(sin, 0.5, fs)
 
