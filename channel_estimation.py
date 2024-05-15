@@ -12,6 +12,7 @@ def cross_power_spectrum_channel_estimation(x, y):
     x_power = signal.welch(x, fs=1, nfft=1024, return_onesided=False)
 
     return cross_power / x_power
+
 def standered_estimation(x, y):
     # x and y are the time signals to be compared
     # needs to be edited if x and y are multblocks
@@ -33,3 +34,7 @@ def wiener_hopf_channel_estimation(x, y):
     # needs to be implemented
     return
 
+if __name__ == "__main__":
+    # Load file1.csv and channel.csv as vectors
+
+    x = pd.read_csv('inital.csv', header=None).to_numpy()
