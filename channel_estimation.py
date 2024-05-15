@@ -9,16 +9,16 @@ def cross_power_spectrum_channel_estimation(x, y):
     # fs is the sampling frequency
     # nfft is the number of points to use in the fft
     #nspre is the number of points to overlap in the fft
-    cross_power = signal.csd(x, y, fs=44100, nfft=441000, return_onesided=False)
-    x_power = signal.welch(x, fs=44100, nfft=441000, return_onesided=False)
+    cross_power = signal.csd(x, y, fs=44100, nfft=44100, return_onesided=False)
+    x_power = signal.welch(x, fs=44100, nfft=44100, return_onesided=False)
 
     return cross_power / x_power
 
 def standered_estimation(x, y):
     # x and y are the time signals to be compared
     # needs to be edited if x and y are multblocks
-    X = np.fft.fft(x, n=441000)
-    Y = np.fft.fft(y, n=441000)
+    X = np.fft.fft(x, n=44100)
+    Y = np.fft.fft(y, n=44100)
     channel_estimation = Y / X
     return channel_estimation
 
@@ -52,8 +52,25 @@ if __name__ == "__main__":
     plt.show()
 
     chanel_estimation = standered_estimation(x, y)
+    #cross_estmation = cross_power_spectrum_channel_estimation(x, y)
     print(chanel_estimation)
     #invese_fft = np.fft.fft(y)
-    plt.plot(chanel_estimation)
+    frequencies = np.fft.fftfreq(n=44100, d=1/44100)
+    check = pd.read_csv('Initial_Tests\sine4k_timedata.csv', header=None).to_numpy()
+    check = np.reshape(check, len(check))
+    check = check[2000:160000]
+    #plt.plot(check)
+    #plt.show()
+    #check = np.pad(check, (0, len(x) - len(check)))
+    FFT_check = np.fft.fft(check, n=44100)
+    plt.plot(np.abs(FFT_check))
     plt.show()
-    
+    fixed = FFT_check / chanel_estimation
+    time = np.fft.ifft(fixed)
+    """plt.plot(frequencies,20 *np.log10(np.abs(np.fft.fft(y, n=441000))))
+    plt.show()"""
+    plt.plot(frequencies,20 *np.log10(np.abs(chanel_estimation)))
+    plt.show()
+
+    plt.plot(time)
+    plt.show()
