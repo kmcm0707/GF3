@@ -2,6 +2,7 @@ import numpy as np
 
 import time
 import pyaudio
+import scipy
 
 # from sound_generator import *
 
@@ -74,4 +75,16 @@ def generate_sound(samples, volume, fs): # volume range [0.0, 1.0]
 
     p.terminate()
 
-generate_sound(to_transmit, 1, fs)
+duration = 5.0  # in seconds, may be float
+t = np.linspace(0, int(duration), int(fs*duration), endpoint=False)
+samples = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
+
+print(samples.shape)
+
+print(to_transmit.shape)
+
+sound_to_send = np.concatenate((samples, to_transmit))
+
+print(sound_to_send.shape)
+
+generate_sound(sound_to_send, 1, fs)
