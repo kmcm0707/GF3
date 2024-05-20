@@ -44,46 +44,12 @@ samples = np.reshape(to_decode, len(to_decode)).astype(np.float32)
 t = np.linspace(0, int(duration), int(fs*duration), endpoint=False)"""
 #samples = signal.chirp(t, f0=0, f1=16000, t1=int(duration), method='linear').astype(np.float32)
 # per @yahweh comment explicitly convert to bytes sequence
-duration = 5.0  # in seconds, may be float
+duration = 10.0  # in seconds, may be float
 fs = 44100  # sampling rate, Hz, must be integer
 t = np.linspace(0, int(duration), int(fs*duration), endpoint=False)
 #samples = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
-f = 9000.0  # sine frequency, Hz, may be float
-sin = np.sin(2 * np.pi * np.arange(fs * duration) * f / fs).astype(np.float32)
-generate_sound(sin, 0.95, fs)
-time.sleep(2)
-
-"""f = 3000.0  # sine frequency, Hz, may be float
-sin = np.sin(2 * np.pi * np.arange(fs * duration) * f / fs).astype(np.float32)
-generate_sound(sin, 0.5, fs)
-time.sleep(2)
-
-f = 5000.0  # sine frequency, Hz, may be float
-sin = np.sin(2 * np.pi * np.arange(fs * duration) * f / fs).astype(np.float32)
-generate_sound(sin, 0.5, fs)
-time.sleep(2)
-
-f = 7000.0  # sine frequency, Hz, may be float
-sin = np.sin(2 * np.pi * np.arange(fs * duration) * f / fs).astype(np.float32)
-generate_sound(sin, 0.5, fs)
-time.sleep(2)
-f = 9000.0  # sine frequency, Hz, may be float
-sin = np.sin(2 * np.pi * np.arange(fs * duration) * f / fs).astype(np.float32)
-generate_sound(sin, 0.5, fs)
-time.sleep(2)
-f = 11000.0  # sine frequency, Hz, may be float
-sin = np.sin(2 * np.pi * np.arange(fs * duration) * f / fs).astype(np.float32)
-generate_sound(sin, 0.5, fs)
-time.sleep(2)
-f = 13000.0  # sine frequency, Hz, may be float
-sin = np.sin(2 * np.pi * np.arange(fs * duration) * f / fs).astype(np.float32)
-generate_sound(sin, 0.5, fs)
-time.sleep(2)
-f = 16000.0  # sine frequency, Hz, may be float
-sin = np.sin(2 * np.pi * np.arange(fs * duration) * f / fs).astype(np.float32)
-generate_sound(sin, 0.5, fs)
-time.sleep(2)
-
+sin = np.sin(2 * np.pi * np.arange(fs * duration) * 1000 / fs).astype(np.float32)
+generate_sound(sin, 1, fs)
 
 
 """
