@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # Load file1.csv and channel.csv as vectors
 
-dataframe1 = pd.read_csv('weekend_files/file8.csv', header=None)
+dataframe1 = pd.read_csv('foo.csv', header=None)
 to_decode = dataframe1.to_numpy()
 
 dataframe2 = pd.read_csv('weekend_files/channel.csv', header=None)
@@ -53,12 +53,12 @@ channel = np.pad(channel, (0, 1024 - len(channel)), "constant")
 
 #channel_2 = 
 channel_freq = np.fft.fft(channel)
-plt.plot(np.abs(channel_freq))
-plt.show()
+#plt.plot(np.abs(channel_freq))
+#plt.show()
 print(symbols_freq[0][0])
 print(symbols_freq[0][1])
 print(symbols_freq[0][1023])
-recieved_freq = symbols_freq / channel_freq
+recieved_freq = symbols_freq #/ channel_freq
 
 # For each element, find closest conselation symbol (√2 + √2 j, √2 - √2 j, -√2 - √2 j, - √2 + √2j)
 
@@ -73,11 +73,11 @@ constellations = np.delete(constellations, 0, 0)
 print(constellations[0][510])"""
 binary = []
 
-"""plt.scatter(constellations[4][:100].real, constellations[4][:100].imag)
+plt.scatter(constellations[4][:100].real, constellations[4][:100].imag)
 plt.scatter(constellations[4][100:250].real, constellations[4][100:250].imag, color='red')
 plt.scatter(constellations[4][250:].real, constellations[4][250:].imag, color='green')
 plt.show()
-"""
+
 for symbol in constellations:
     for i in symbol:
         if np.real(i) >= 0 and np.imag(i) >= 0:
@@ -94,7 +94,7 @@ for symbol in constellations:
 binary = ''.join(binary)
 # output = binary.decode("ascii")
 
-output = open("output7.txt", "w")
+output = open("output99.txt", "w")
 output.write(binary)
 output.close()
 

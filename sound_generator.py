@@ -52,4 +52,3 @@ sin = np.sin(2 * np.pi * np.arange(fs * duration) * 1000 / fs).astype(np.float32
 generate_sound(sin, 1, fs)
 
 
-"""

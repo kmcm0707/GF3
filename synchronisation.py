@@ -45,7 +45,8 @@ if __name__ == "__main__":
     x = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
 
     #x = np.sin(2 * np.pi * np.arange(fs * duration) * f / fs).astype(np.float32)
-    max_index, cross_correlation, lags = matched_filter_synchronisation(y, duration, fs)
+    x = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
+    max_index, cross_correlation, lags = matched_filter_synchronisation(y,x, duration, fs)
     cross_correlation = np.reshape(cross_correlation, cross_correlation.shape[1])
     print(max_index)
     
@@ -60,16 +61,11 @@ if __name__ == "__main__":
 
 
     channel_estimation = standered_estimation(x, correct_data)
+    
     frequencies = np.fft.fftfreq(n=44100, d=1/44100)
     frequencies = np.fft.fftshift(frequencies)
     plt.plot(np.abs(channel_estimation))
     plt.show()
 
-
-
-    invesed = np.fft.ifft(channel_estimation)
-    print(invesed)
-    plt.plot(invesed)
-    plt.show()
 
 
