@@ -7,16 +7,16 @@ import scipy
 # from sound_generator import *
 
 
-with open('transmitter/data_file3.txt', 'r') as file:
+with open('transmitter/data_file.txt', 'r') as file:
     data = file.read().replace('\n', '')
-    data = data.replace(' ', '')
-    data = data.replace('.', '')
+    #data = data.replace(' ', '')
+    #data = data.replace('.', '')
 
 print(data)
 print(type(bytearray(data, 'ascii')))
 
-data_in_binary = '0'
-data_in_binary += ('0'.join(format(ord(x), 'b') for x in data))
+data_in_binary = ''
+data_in_binary += (''.join(format(ord(x), 'b').zfill(8) for x in data))
 data_in_binary += ''.join(str(x) for x in ([0] * (1022 - len(data_in_binary) % 1022)))
 data_in_binary = np.array(list(data_in_binary))
 
@@ -93,7 +93,7 @@ def generate_sound(samples, volume, fs): # volume range [0.0, 1.0]
 
     p.terminate()
 
-duration = 5.0  # in seconds, may be float
+"""duration = 5.0  # in seconds, may be float
 t = np.linspace(0, int(duration), int(fs*duration), endpoint=False)
 samples = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
 
@@ -104,7 +104,7 @@ print(to_transmit.shape)
 sound_to_send = np.concatenate((samples, to_transmit))
 
 print(sound_to_send.shape)
-
+"""
 to_transmit = to_transmit.astype(np.float32)
 np.savetxt("foo.csv", to_transmit, delimiter="")
 
