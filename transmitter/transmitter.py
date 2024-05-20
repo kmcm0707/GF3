@@ -106,7 +106,7 @@ sound_to_send = np.concatenate((samples, to_transmit))
 
 print(sound_to_send.shape)
 
-to_transmit = to_transmit.astype(np.float32)
+sound_to_send = sound_to_send.astype(np.float32)
 np.savetxt("foo.csv", to_transmit, delimiter="")
 
-#generate_sound(sound_to_send, 1, fs)
+generate_sound(sound_to_send, 1, fs)
