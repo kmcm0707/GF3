@@ -66,6 +66,7 @@ for index, x in enumerate(info):
 
 
 to_transmit = np.concatenate(to_transmit, axis=0)
+print(to_transmit.shape)
 
 # generate_sound(to_transmit, 1, sampling_freq = 44100)
 
@@ -93,7 +94,7 @@ def generate_sound(samples, volume, fs): # volume range [0.0, 1.0]
 
     p.terminate()
 
-"""duration = 5.0  # in seconds, may be float
+duration = 5.0  # in seconds, may be float
 t = np.linspace(0, int(duration), int(fs*duration), endpoint=False)
 samples = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
 
@@ -104,7 +105,7 @@ print(to_transmit.shape)
 sound_to_send = np.concatenate((samples, to_transmit))
 
 print(sound_to_send.shape)
-"""
+
 to_transmit = to_transmit.astype(np.float32)
 np.savetxt("foo.csv", to_transmit, delimiter="")
 
