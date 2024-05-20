@@ -21,9 +21,9 @@ gray_mapping = np.split(data_in_binary, len(data_in_binary)/2)
 for index, x in enumerate(gray_mapping):
     if tuple(x) == ('0','0'):
         gray_mapping[index] = (1 + 1j)/np.sqrt(2)
-    if tuple(x) == ('0','0'):
+    if tuple(x) == ('0','1'):
         gray_mapping[index] = (-1 + 1j)/np.sqrt(2)
-    if tuple(x) == ('0','0'):
+    if tuple(x) == ('1','1'):
         gray_mapping[index] = (-1 - 1j)/np.sqrt(2)
     else:
         gray_mapping[index] = (1 - 1j)/np.sqrt(2)
