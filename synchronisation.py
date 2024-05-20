@@ -3,7 +3,7 @@ import scipy.signal
 import scipy
 import pandas as pd
 import matplotlib.pyplot as plt
-from channel_estimation  import *
+from channel_estimation_chirp  import *
 from scipy.ndimage import uniform_filter1d
 
 def matched_filter_synchronisation(y,x, duration, sampling_frequency):
