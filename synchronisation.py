@@ -4,14 +4,16 @@ import scipy
 import pandas as pd
 import matplotlib.pyplot as plt
 from channel_estimation  import *
+from scipy.ndimage import uniform_filter1d
 
-def matched_filter_synchronisation(y, duration, sampling_frequency):
+def matched_filter_synchronisation(y,x, duration, sampling_frequency):
     # x and y are the time signals to be compared
     # fs is the sampling frequency
     # needs to be edited if x and y are multblocks
     t = np.linspace(0, duration, int(sampling_frequency * duration), endpoint=False)
-    x = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
+    #x = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
     x = np.reshape(x, len(x))
+    x = x
 
     """x = np.pad(x, ((len(y) - len(x))//2, 0), 'constant')
 
@@ -27,7 +29,7 @@ def matched_filter_synchronisation(y, duration, sampling_frequency):
     cross_correlation.append(scipy.signal.correlate(y, x,mode='full', method='fft'))
         #print(cross_correlation[i])
     cross_correlation = np.array(cross_correlation)
-
+    cross_correlation = uniform_filter1d(cross_correlation, size=5)
     max_index = np.argmax(cross_correlation)
     return max_index, cross_correlation, lags
 
@@ -42,7 +44,7 @@ if __name__ == "__main__":
 
     x = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
 
-
+    #x = np.sin(2 * np.pi * np.arange(fs * duration) * f / fs).astype(np.float32)
     max_index, cross_correlation, lags = matched_filter_synchronisation(y, duration, fs)
     cross_correlation = np.reshape(cross_correlation, cross_correlation.shape[1])
     print(max_index)
