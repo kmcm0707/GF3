@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 dataframe1 = pd.read_csv('foo.csv', header=None)
 to_decode = dataframe1.to_numpy()
 
+# Can also use channel_response = np.loadtxt('weekend_files/channel.csv', delimiter = ",", dtype = "float") if don't want to use pandas
+
 dataframe2 = pd.read_csv('weekend_files/channel.csv', header=None)
 channel = dataframe2.to_numpy()
 
