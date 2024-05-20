@@ -13,7 +13,10 @@ Note:
 - each pilot symbols sent for 2s
 - can be used to combat echo is spaced equally throughout the sent information symbols (accounts for changing channel across time and freq)
 - accounts for amplitude attenuation
-- does not account for freq distortion? (Check with jossy)
 - taking an instance in discrete time, the channel coeff against freq should look like a rectangular waveform
   Upon DFT, it should give a channel response in discrete time that looks like a sinc
+
+Question
+- does not account for freq distortion? (Check with jossy)
+- is each pilot symbol sent just amplitude, is it possible to send phase and amplitude and check for phase shift (distortion) by the channel?
 '''
