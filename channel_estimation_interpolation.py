@@ -6,7 +6,7 @@ steps:
 1. send pilot symbols of known time and freq of equal amplitudes 
 2. upon receiving the symbols, synchronise to ensure correct start of symbols
 3. point wise division to retrieve channel gains across pilot time and freq
-4. interpolation across time and freq to fill in missing fields (can use ML, plane fitting)
+4. interpolation across time and freq to fill in missing fields (can use ML, deep learning, plane fitting)
 
 Note:
 - freq from 1 to 16k
@@ -18,5 +18,6 @@ Note:
 
 Question
 - does not account for freq distortion? (Check with jossy)
+- am I just sending sine waves of diff freq at diff time?
 - is each pilot symbol sent just amplitude, is it possible to send phase and amplitude and check for phase shift (distortion) by the channel?
 '''
