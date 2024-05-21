@@ -20,7 +20,7 @@ data_in_binary += (''.join(format(ord(x), 'b').zfill(8) for x in data))
 data_in_binary += ''.join(str(x) for x in ([0] * (1022 - len(data_in_binary) % 1022)))
 data_in_binary = np.array(list(data_in_binary))
 
-np.savetxt("foo.txt", data_in_binary, delimiter="", fmt='%s')
+np.savetxt("bee_data.txt", data_in_binary, delimiter="", fmt='%s')
 print(data_in_binary)
 print(len(data_in_binary))
 gray_mapping = np.split(data_in_binary, len(data_in_binary)/2)
@@ -48,15 +48,19 @@ print(len(gray_mapping))
 print(len(data_in_binary))
 symbol = np.split(np.array(gray_mapping), len(gray_mapping)/511)
 
+
 for index, x in enumerate(symbol):
+    x = np.reshape(x, 511)
+    #x = np.pad(x, (1000, 0), "constant", constant_values=(1, 1))
     conj = np.conjugate(x)[::-1]
     symbol[index] = np.concatenate((x, conj), axis=None)
     symbol[index] = np.insert(symbol[index], 0, 0)
     symbol[index] = np.insert(symbol[index], 512, 0)
 
+print(len(symbol[0]))
 print(symbol[0])
 info = np.fft.ifft(symbol) # should I iDFT the whole block or iDFT each 1024 symbol, is there a difference?
-
+print(info.shape)
 to_transmit = np.zeros(shape=(len(info), 1056))
 
 for index, x in enumerate(info):
@@ -94,19 +98,24 @@ def generate_sound(samples, volume, fs): # volume range [0.0, 1.0]
 
     p.terminate()
 
-duration = 5.0  # in seconds, may be float
+duration = 1.0  # in seconds, may be float
 t = np.linspace(0, int(duration), int(fs*duration), endpoint=False)
-samples = scipy.signal.chirp(t, f0=1000, f1=16000, t1=int(duration), method='linear').astype(np.float32)
+samples = scipy.signal.chirp(t, f0=0, f1=5000, t1=int(duration), method='linear').astype(np.float32)
 
 print(samples.shape)
 
 print(to_transmit.shape)
-
+print(to_transmit)
+to_transmit = to_transmit.astype(np.float32)
+to_transmit = to_transmit / np.max(np.abs(to_transmit))
 sound_to_send = np.concatenate((samples, to_transmit))
 
 print(sound_to_send.shape)
 
 to_transmit = to_transmit.astype(np.float32)
-np.savetxt("foo.csv", to_transmit, delimiter="")
+sound_to_send = sound_to_send.astype(np.float32)
+generate_sound(sound_to_send, 1, fs)
 
-#generate_sound(sound_to_send, 1, fs)
+#np.savetxt("foo.csv", to_transmit, delimiter="")
+
+#generate_sound(sound_to_send, 1, fs)"""
