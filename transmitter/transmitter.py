@@ -119,3 +119,7 @@ generate_sound(sound_to_send, 1, fs)
 #np.savetxt("foo.csv", to_transmit, delimiter="")
 
 #generate_sound(sound_to_send, 1, fs)"""
+sound_to_send = sound_to_send.astype(np.float32)
+np.savetxt("foo.csv", to_transmit, delimiter="")
+
+generate_sound(sound_to_send, 1, fs)
