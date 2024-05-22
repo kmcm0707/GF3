@@ -18,10 +18,14 @@ def cross_power_spectrum_channel_estimation(x, y):
 def standered_estimation(x, y, fs=44100):
     # x and y are the time signals to be compared
     # needs to be edited if x and y are multblocks
-    X = np.fft.fft(x, n = fs)
-   
-    Y = np.fft.fft(y, n = fs)
+    X = np.fft.fft(x, n = 1024)
+    X[0] = 1
+    X[512] = 1
+    Y = np.fft.fft(y, n = 1024)
+    Y[0] = 1
+    Y[512] = 1
     channel_estimation = Y / X
+    
     return channel_estimation
 
 def mmse_channel_estimation(x, y):

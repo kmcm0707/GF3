@@ -3,6 +3,7 @@ import numpy as np
 import time
 import pyaudio
 import scipy
+import pandas as pd
 
 # from sound_generator import *
 
@@ -25,6 +26,7 @@ print(data_in_binary)
 print(len(data_in_binary))
 gray_mapping = np.split(data_in_binary, len(data_in_binary)/2)
 #print(gray_mapping)
+constelatons = []
 for index, x in enumerate(gray_mapping):
     if index == 0:
         print(x)
@@ -32,17 +34,23 @@ for index, x in enumerate(gray_mapping):
     
     if (x == ['0', '0']).all():
         gray_mapping[index] = (1 + 1j)/np.sqrt(2)
+        constelatons.append('A')
     if (x == ['0', '1']).all():
         gray_mapping[index] = (-1 + 1j)/np.sqrt(2)
+        constelatons.append('B')
         #print((-1 + 1j)/np.sqrt(2))
     if (x == ['1', '1']).all():
         gray_mapping[index] = (-1 - 1j)/np.sqrt(2)
+        constelatons.append('C')
     if (x == ['1', '0']).all():
         gray_mapping[index] = (1 - 1j)/np.sqrt(2)
+        constelatons.append('D')
+
+np.savetxt("constelations.txt", constelatons, delimiter="", fmt='%s')
     
 
 
-
+"""
 print(np.array(gray_mapping))
 print(len(gray_mapping))
 print(len(data_in_binary))
@@ -60,7 +68,11 @@ for index, x in enumerate(symbol):
 print(len(symbol[0]))
 print(symbol[0])
 info = np.fft.ifft(symbol) # should I iDFT the whole block or iDFT each 1024 symbol, is there a difference?
-print(info.shape)
+output = open("info.txt", "w")
+df = pd.DataFrame(info[0])
+df.to_csv("info.csv", header=False, index=False)"""
+
+"""print(info.shape)
 to_transmit = np.zeros(shape=(len(info), 1056))
 
 for index, x in enumerate(info):
@@ -118,8 +130,9 @@ generate_sound(sound_to_send, 1, fs)
 
 #np.savetxt("foo.csv", to_transmit, delimiter="")
 
-#generate_sound(sound_to_send, 1, fs)"""
+#generate_sound(sound_to_send, 1, fs)
 sound_to_send = sound_to_send.astype(np.float32)
 np.savetxt("foo.csv", to_transmit, delimiter="")
 
 generate_sound(sound_to_send, 1, fs)
+"""
