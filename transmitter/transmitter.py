@@ -50,7 +50,7 @@ np.savetxt("constelations.txt", constelatons, delimiter="", fmt='%s')
     
 
 
-"""
+
 print(np.array(gray_mapping))
 print(len(gray_mapping))
 print(len(data_in_binary))
@@ -70,9 +70,9 @@ print(symbol[0])
 info = np.fft.ifft(symbol) # should I iDFT the whole block or iDFT each 1024 symbol, is there a difference?
 output = open("info.txt", "w")
 df = pd.DataFrame(info[0])
-df.to_csv("info.csv", header=False, index=False)"""
+df.to_csv("info.csv", header=False, index=False)
 
-"""print(info.shape)
+print(info.shape)
 to_transmit = np.zeros(shape=(len(info), 1056))
 
 for index, x in enumerate(info):
@@ -82,6 +82,8 @@ for index, x in enumerate(info):
 
 
 to_transmit = np.concatenate(to_transmit, axis=0)
+print("max")
+print(np.max(np.abs(to_transmit)))
 print(to_transmit.shape)
 
 # generate_sound(to_transmit, 1, sampling_freq = 44100)
@@ -135,4 +137,3 @@ sound_to_send = sound_to_send.astype(np.float32)
 np.savetxt("foo.csv", to_transmit, delimiter="")
 
 generate_sound(sound_to_send, 1, fs)
-"""

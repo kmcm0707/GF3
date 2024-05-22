@@ -6,11 +6,11 @@ from channel_estimation_chirp  import *
 from scipy.ndimage import uniform_filter1d
 
 if __name__ == "__main__":
-    correct_data = pd.read_csv('info.csv', header=None).to_numpy()
+    correct_data = pd.read_csv('testing/info.csv', header=None).to_numpy()
     correct_data = np.reshape(correct_data, len(correct_data))
 
 
-    y = pd.read_csv('beeeee-w-chirp.txt', header=None).to_numpy()
+    y = pd.read_csv('testing/beeeee-w-chirp.txt', header=None).to_numpy()
     y = np.reshape(y, len(y))
 
 
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     signal_data = np.pad(signal_data, (0, 1056 - len(signal_data) % 1056), 'constant')
     print(len(signal_data[32:1056]))
 
-    #chanel_est = standered_estimation(chirp, correct_data_chirp, fs)
+    #chanel_est = standered_estimation(chirp, correct_data_chirp, 44100)
     chanel_est = standered_estimation(correct_data, signal_data[32:1056], fs)
 
     signal_data = np.reshape(signal_data, len(signal_data))
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     output.write(binary)
     output.close()
 
-    bee_binary = pd.read_csv('bee_data.txt', header=None).to_numpy()
+    bee_binary = pd.read_csv('testng/bee_data.txt', header=None).to_numpy()
     bee_binary = np.reshape(bee_binary, len(bee_binary))
 
     bee_constelation = pd.read_csv('constelations.txt', header=None).to_numpy()
