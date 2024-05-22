@@ -19,11 +19,9 @@ def standered_estimation(x, y, n=1024):
     # x and y are the time signals to be compared
     # needs to be edited if x and y are multblocks
     X = np.fft.fft(x, n)
-    X[0] = 1
-    X[512] = 1
+
     Y = np.fft.fft(y, n)
-    Y[0] = 1
-    Y[512] = 1
+
     channel_estimation = Y / X
     
     return channel_estimation
