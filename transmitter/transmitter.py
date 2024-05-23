@@ -46,9 +46,9 @@ for index, x in enumerate(gray_mapping):
         gray_mapping[index] = (1 - 1j)/np.sqrt(2)
         constelatons.append('D')
 
-np.savetxt("constelations.txt", constelatons, delimiter="", fmt='%s')
+np.savetxt("constellations.txt", constelatons, delimiter="", fmt='%s')
     
-
+"""
 
 
 print(np.array(gray_mapping))
@@ -137,3 +137,4 @@ sound_to_send = sound_to_send.astype(np.float32)
 np.savetxt("foo.csv", to_transmit, delimiter="")
 
 # generate_sound(sound_to_send, 1, fs)
+"""
