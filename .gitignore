@@ -2,3 +2,4 @@ venv/
 .DS_Store
 **/*.pyc
 ldpc_jossy/bin/
+ldpc_jossy/py/ldpc.py
