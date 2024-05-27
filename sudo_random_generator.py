@@ -11,3 +11,10 @@ if __name__ == "__main__":
     block = np.array(block)
     print(block.shape)
     pd.DataFrame(block).to_csv('OFDM_block_ranints.csv', index = False, header = False)
+    bits = []
+    for i in block:
+        bits.append(np.binary_repr(i, width = 2))
+    bits = np.array(bits)
+    print(bits)
+    pd.DataFrame(bits).to_csv('OFDM_block_ranbits.csv', index = False, header = False)
+
