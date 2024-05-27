@@ -8,15 +8,14 @@ def reciver(fs, time, save_file = False, file_name = 'recording.wav'):
     numsamples = int(fs * time)
     recording = sd.rec(numsamples, samplerate=fs, channels=1, dtype='float32')
     sd.wait()
-    print(recording)
+    data = np.array(recording)
+    data = data.flatten()
     if save_file:
-        output = open(file_name, "w")
-        output.write(recording)
-        output.close()
-    return recording
+        pd.DataFrame(data).to_csv(file_name, index = False, header = False)
+    return data
 
 if __name__ == "__main__":
-    fs = 44100
+    fs = 48000
     time = 3
     recording = reciver(fs, time, save_file = True, file_name = 'recording.csv')
     print(recording)
