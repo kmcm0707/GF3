@@ -3,4 +3,4 @@ venv/
 **/*.pyc
 ldpc_jossy/bin/
 ldpc_jossy/py/ldpc.py # git update-index --assume-unchanged py/ldpc.py     - to ignore changes
-
+reports/
