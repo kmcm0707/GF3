@@ -16,7 +16,7 @@ class receiver(audio_modem):
         # TODO
 
 
-    def ofdm(self, to_decode):
+    def ofdm(self, to_decode, sigma2):
         # TODO: Only use bins that are useful
 
         decoded_symbols = np.split(to_decode, len(to_decode) / (self.ofdm_prefix_size + self.ofdm_symbol_size))
@@ -49,7 +49,7 @@ class receiver(audio_modem):
         decoded_binary = []
         llrs = []
 
-        sigma2 = 2 # Sigma squared - TODO Calculate
+        #sigma2 = 1 # Sigma squared - TODO Calculate
 
         # Do Inverse Gray Code:
 
@@ -76,7 +76,7 @@ class receiver(audio_modem):
 
                 l2 = self.channel_freq[index] * np.conj(self.channel_freq[index]) * np.real(i) / sigma2
 
-                print("Star = ", i, ". l1, l2 =", (l1, l2))
+                # print("Star = ", i, ". l1, l2 =", (l1, l2))
                 llrs.extend([l1.real, l2.real])
 
         decoded_binary = decoded_binary[:-3296] # TODO find OFDM Padding length automatically
@@ -84,22 +84,35 @@ class receiver(audio_modem):
 
         return decoded_binary, llrs
 
-    def ldpc_decode(self, to_decode, llrs):
+    def ldpc_decode(self, to_decode, llrs, mode="soft"):
         decoded = []
-
-        llrs = np.split(np.array(llrs), len(llrs) // self.c.N)
 
         print("Number of OFDM Blocks: ", len(llrs))
 
-        for i in llrs:
-            # i = 10 * (0.5 - i) # Do weightings
+        if mode == "soft":
+            llrs = np.split(np.array(llrs), len(llrs) // self.c.N)
 
-            decoded_block, iters = self.c.decode(i)
+            for i in llrs:
+                decoded_block, iters = self.c.decode(i)
 
-            print("Iterations ", iters)
+                # print("Iterations ", iters)
 
-            decoded_block = decoded_block[:-(self.c.K)] # No idea what the extra information is
-            decoded += ([1 if k < 0 else 0 for k in decoded_block])
+                decoded_block = decoded_block[:-(self.c.K)] # No idea what the extra information is
+                decoded += ([1 if k < 0 else 0 for k in decoded_block])
+        elif mode == "hard":
+            to_decode = np.split(np.array(to_decode), len(to_decode) // self.c.N)
+
+            for i in to_decode:
+                i = 10 * (0.5 - i) # Do weightings
+
+                decoded_block, iters = self.c.decode(i)
+
+                # print("Iterations ", iters)
+
+                decoded_block = decoded_block[:-(self.c.K)] # No idea what the extra information is
+                decoded += ([1 if k < 0 else 0 for k in decoded_block])
+        else:
+            raise Exception("Only 'hard' and 'soft' are valid ldpc decoding modes")
             
         return decoded[:-392] # TODO find LDPC Padding Length automatically
     
