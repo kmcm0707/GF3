@@ -133,16 +133,28 @@ class audio_modem:
     
     def constellation_point_to_binary(self, constellation_point):
         """Converts a constellation point to a binary symbol"""
-        if (constellation_point == 1 + 1j).all():
+
+        if np.real(constellation_point) >= 0 and np.imag(constellation_point) >= 0:
             return [0, 0]
-        elif (constellation_point == -1 + 1j).all():
+        elif np.real(constellation_point) <= 0 and np.imag(constellation_point) >= 0:
             return [0, 1]
-        elif (constellation_point == -1 - 1j).all():
+        elif np.real(constellation_point) <= 0 and np.imag(constellation_point) <= 0:
             return [1, 1]
-        elif (constellation_point == 1 - 1j).all():
+        elif np.real(constellation_point) >= 0 and np.imag(constellation_point) <= 0:
             return [1, 0]
         else:
-            raise ValueError("constellation point must be in range [1 + 1j, -1 - 1j]")
+            raise Exception("Gray Code Decoding Error")
+
+        # if (constellation_point == 1 + 1j).all():
+        #     return [0, 0]
+        # elif (constellation_point == -1 + 1j).all():
+        #     return [0, 1]
+        # elif (constellation_point == -1 - 1j).all():
+        #     return [1, 1]
+        # elif (constellation_point == 1 - 1j).all():
+        #     return [1, 0]
+        # else:
+        #     raise ValueError("constellation point must be in range [1 + 1j, -1 - 1j]")
              
     
 

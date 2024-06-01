@@ -60,7 +60,20 @@ class receiver(audio_modem):
         # X = Ideal OFDM Blocks
         # H = Channel Response
         # sigma2 = Noise Power
-        sigma2 = np.mean(np.abs(recieved - ideal) ** 2)
+        sigma2 = np.mean(np.abs(recieved - ideal) ** 2) 
+        print("first guess sigma2:", sigma2)
+
+        print(recieved[0:10])
+        print("---")
+        print(ideal[0:10])
+
+        real_square_error = (recieved - ideal).real ** 2
+        # print(real_square_error)
+        imag_square_error = (recieved - ideal).imag ** 2
+        # print(imag_square_error)
+
+        sigma2 = (np.mean(real_square_error) + np.mean(imag_square_error)) / 2
+        print("second guess sigma2", sigma2) # Should be ~ 0.1 ish for ideal channel?
         return sigma2
     
     def combined_correction(self, current_OFDM):
@@ -160,6 +173,8 @@ class receiver(audio_modem):
 
         # Rotate Watermark
         corrected = corrected * np.exp(1j * watermark * np.pi / 2)
+
+        self.constellations = corrected
 
         # Find Closest Constellation Point
         decoded = []

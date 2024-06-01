@@ -135,7 +135,7 @@ class transmitter(audio_modem):
 
         p.terminate()
 
-    def transmit(self, filename):
+    def transmit(self, filename, playsound=True):
         binary_data = self.process_file(filename)
         coded_binary_data = self.ldpc_encode(binary_data)
         to_transmit = self.ofdm(coded_binary_data)
@@ -143,7 +143,8 @@ class transmitter(audio_modem):
         known_ofdm_cp_ifft = self.generate_known_ofdm_block_cp_ifft()
         to_transmit = self.assemble_all(to_transmit, chirp_p_s, known_ofdm_cp_ifft)
         print(len(to_transmit))
-        self.play_sound(to_transmit)
+        if playsound:
+            self.play_sound(to_transmit)
         return to_transmit
 
 
