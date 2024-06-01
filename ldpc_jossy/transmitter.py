@@ -1,5 +1,8 @@
 import numpy as np
 from audio_modem import audio_modem
+import pyaudio
+import time
+import pandas as pd
 
 class transmitter(audio_modem):
     def __init__(self):
@@ -21,6 +24,8 @@ class transmitter(audio_modem):
         return np.unpackbits(np.frombuffer(bytes, dtype=np.uint8))
     
     def ldpc_encode(self, binary_data):
+        """binary_data: numpy array of binary data to be encoded"""
+        print("LDPC Encoding Length:", len(binary_data))
         # Pad with zeroes
         padding_zeros = []
         if len(binary_data) % self.c.K != 0:
@@ -44,8 +49,7 @@ class transmitter(audio_modem):
         return np.array(coded_binary_data).flatten()
 
     def ofdm(self, to_encode):
-        # TODO: Only use bins that are useful
-
+        print("OFDM Encoding Length:", len(to_encode))
         split_length = (self.bin_length) * 2
         padding_zeros = []
         if len(to_encode) % split_length != 0:
@@ -59,79 +63,91 @@ class transmitter(audio_modem):
         assert len(to_encode) % split_length == 0.0
 
         to_encode_split = np.split(to_encode, len(to_encode) / split_length)
-        gray_code = np.zeros(len(to_encode) // 2).astype('complex')
+        un_watermarked_data = np.zeros(len(to_encode) // 2).astype('complex')
         watermark = self.generate_known_ofdm_block_mod4()
-
+        data_all = []
         for i in to_encode_split:
-            padded_i = np.pad(i, (self.ofdm_bin_min -1, self.ofdm_symbol_size // 2 - self.ofdm_bin_max - 1), 'constant', constant_values=(0, 0))
+            mod4_i = self.binary_symbol_to_mod4(i)
+            for ii in range(len(mod4_i)):
+                un_watermarked_data[ii] = self.mod4_to_gray(mod4_i[ii])
+            padded_i = np.pad(mod4_i, (self.ofdm_bin_min -1, self.ofdm_symbol_size // 2 - self.ofdm_bin_max - 1), 'constant', constant_values=(0, 0))
             assert len(padded_i) == self.all_bins
+            mod4_added = self.mod_4_addition(padded_i, watermark)
+            data = np.zeros(self.all_bins).astype('complex')
+            for i in range(len(mod4_added)):
+                data[i] = self.mod4_to_gray(mod4_added[i])
+            data_all.append(data)
 
+        data_all = np.array(data_all)
+        assert data_all.shape[1] == self.all_bins
 
-        """gray_code = np.zeros(len(to_encode) // 2).astype('complex')
-
-        for index, i in enumerate([to_encode[i:i + 2] for i in range(0, len(to_encode), 2)]): # Iterate through two items at a time
-            if (i == [0, 0]).all():
-                gray_code[index] = 1 + 1j
-            elif (i == [0, 1]).all():
-                gray_code[index] = -1 + 1j
-            elif (i == [1, 1]).all():
-                gray_code[index] = -1 - 1j
-            elif (i == [1, 0]).all():
-                gray_code[index] = 1 - 1j
-            else:
-                print(i)
-                raise Exception("Gray code mapping error")
-
-        self.constellation = gray_code # Used for plotting constellation diagrams
-
-        symbols = np.split(np.array(gray_code), len(gray_code) / (split_length / 2))
+        self.constellation = un_watermarked_data
 
         # ENFORCE CONJUGATE SYMMETRY:
-
-        for index, x in enumerate(symbols):
+        symbols = np.zeros((len(data_all), self.ofdm_symbol_size)).astype('complex')
+        for index, x in enumerate(data_all):
             conj = np.conjugate(x)[::-1]
-            symbols[index] = np.concatenate((x, conj), axis=None) # Add reflected conjugate symmetry
+            temp = np.concatenate((x, conj), axis=None)
+            temp = np.insert(temp, 0, 0)
+            temp = np.insert(temp, int(self.ofdm_symbol_size / 2), 0)
+            symbols[index] = temp
 
-            symbols[index] = np.insert(symbols[index], 0, 0)
-            symbols[index] = np.insert(symbols[index], int(self.ofdm_symbol_size / 2), 0)
+
+        assert symbols.shape[1] == self.ofdm_symbol_size
 
         # Inverse DFT
         info = np.fft.ifft(symbols)
-
+        assert info.shape[1] == self.ofdm_symbol_size
         for i in info[5]:
-            assert i.imag == 0 # Check is now real
-
-        # ADD CYCLIC PREFIXES
-
+            assert i.imag == 0
         to_transmit = np.zeros(shape = (len(info), self.ofdm_symbol_size + self.ofdm_prefix_size))
-
         for index, x in enumerate(info):
             cyclic_prefix = x[-self.ofdm_prefix_size:]
             to_transmit[index]  = np.concatenate((cyclic_prefix, x), axis = None)
-
-        # print(to_transmit.shape) # Should be (~~, 4096 + 1024)
+        
+        assert to_transmit.shape[1] == self.ofdm_symbol_size + self.ofdm_prefix_size
 
         to_transmit = np.concatenate(to_transmit, axis = 0)
-
-        return to_transmit"""
-
+        return to_transmit
     
-    def play_sound(self):
-        # TODO
-        pass
+    def assemble_all(self, to_transmit, chirp_p_s, known_ofdm_cp_ifft):
+        return np.concatenate((chirp_p_s, known_ofdm_cp_ifft, to_transmit, chirp_p_s), axis = None)
+    
+    def play_sound(self, samples):
+        p = pyaudio.PyAudio()
+        time.sleep(1)
+        samples = samples.astype(np.float32)
+        samples = samples / np.max(np.abs(samples))
+        output_bytes = (1 * samples).tobytes()
+        # for paFloat32 sample values must be in range [-1.0, 1.0]
+        stream = p.open(format=pyaudio.paFloat32,
+                        channels=1,
+                        rate=self.sampling_frequency,
+                        output=True)
 
-    # TODO: Prepend chirp and known OFDM Block
+        # play. May repeat with different volume values (if done interactively)
+        start_time = time.time()
+        stream.write(output_bytes)
+        print("Played sound for {:.2f} seconds".format(time.time() - start_time))
+
+        stream.stop_stream()
+        stream.close()
+
+        p.terminate()
 
     def transmit(self, filename):
         binary_data = self.process_file(filename)
         coded_binary_data = self.ldpc_encode(binary_data)
         to_transmit = self.ofdm(coded_binary_data)
-
+        chirp_p_s = self.generate_chirp_p_s() * 0.1
+        known_ofdm_cp_ifft = self.generate_known_ofdm_block_cp_ifft()
+        to_transmit = self.assemble_all(to_transmit, chirp_p_s, known_ofdm_cp_ifft)
+        print(len(to_transmit))
+        self.play_sound(to_transmit)
         return to_transmit
 
 
 if __name__ == "__main__":
     t = transmitter()
-
-    t.transmit("max_test_in.txt")
+    t.transmit("ldpc_jossy\max_test_in.txt")
 
