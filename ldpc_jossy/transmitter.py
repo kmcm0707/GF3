@@ -140,6 +140,7 @@ class transmitter(audio_modem):
         coded_binary_data = self.ldpc_encode(binary_data)
         to_transmit = self.ofdm(coded_binary_data)
         chirp_p_s = self.generate_chirp_p_s() * 0.1
+        print(len(chirp_p_s))
         known_ofdm_cp_ifft = self.generate_known_ofdm_block_cp_ifft()
         to_transmit = self.assemble_all(to_transmit, chirp_p_s, known_ofdm_cp_ifft)
         print(len(to_transmit))
