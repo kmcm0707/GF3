@@ -66,16 +66,16 @@ class transmitter(audio_modem):
         un_watermarked_data = np.zeros(len(to_encode) // 2).astype('complex')
         watermark = self.generate_known_ofdm_block_mod4()
         data_all = []
-        for i in to_encode_split:
+        for index, i in enumerate(to_encode_split):
             mod4_i = self.binary_symbol_to_mod4(i)
             for ii in range(len(mod4_i)):
-                un_watermarked_data[ii] = self.mod4_to_gray(mod4_i[ii])
+                un_watermarked_data[ii + index * split_length // 2] = self.mod4_to_gray(mod4_i[ii])
             padded_i = np.pad(mod4_i, (self.ofdm_bin_min -1, self.ofdm_symbol_size // 2 - self.ofdm_bin_max - 1), 'constant', constant_values=(0, 0))
             assert len(padded_i) == self.all_bins
             mod4_added = self.mod_4_addition(padded_i, watermark)
             data = np.zeros(self.all_bins).astype('complex')
-            for i in range(len(mod4_added)):
-                data[i] = self.mod4_to_gray(mod4_added[i])
+            for iii in range(len(mod4_added)):
+                data[iii] = self.mod4_to_gray(mod4_added[iii])
             data_all.append(data)
 
         data_all = np.array(data_all)

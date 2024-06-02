@@ -128,7 +128,7 @@ class audio_modem:
             elif (binary_symbol[i], binary_symbol[i+1]) == (1, 1):
                 mod4_symbol.append(2)
             elif (binary_symbol[i], binary_symbol[i+1]) == (1, 0):
-                mod4_symbol.append(3)        
+                mod4_symbol.append(3)      
         return mod4_symbol
     
     def constellation_point_to_binary(self, constellation_point):
