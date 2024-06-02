@@ -205,7 +205,7 @@ class receiver(audio_modem):
 
         watermark = self.generate_known_ofdm_block_mod4()
         watermark = watermark[self.ofdm_bin_min-1:self.ofdm_bin_max]
-        print("Watermark: ", watermark[0:5])
+        # print("Watermark: ", watermark[0:5])
 
         # Rotate Watermark
         corrected = corrected * np.exp(-1j * watermark * np.pi / 2)
@@ -367,36 +367,36 @@ class receiver(audio_modem):
 
         return ''.join([chr(i) for i in ascii])
 
-def success(a, b):
-    """find the percentage difference between two lists"""
-    successes = 0
+# def success(a, b):
+#     """find the percentage difference between two lists"""
+#     successes = 0
 
-    for index, i in enumerate(a):
-        if i == b[index]:
-            successes += 1 / len(a)
+#     for index, i in enumerate(a):
+#         if i == b[index]:
+#             successes += 1 / len(a)
 
-    return successes
+#     return successes
 
-from transmitter import transmitter
+# from transmitter import transmitter
 
-if __name__ == "__main__":
-    t =  transmitter()
+# if __name__ == "__main__":
+#     t =  transmitter()
 
-    transmitted_bits = t.process_file("max_test_in.txt")
+#     transmitted_bits = t.process_file("max_test_in.txt")
 
-    r = receiver()
+#     r = receiver()
 
-    # print(r.decode_text([0, 1, 0, 0, 0, 0, 0, 1]))
+#     # print(r.decode_text([0, 1, 0, 0, 0, 0, 0, 1]))
 
-    r.set_bits_and_file_name(30704,'asdf')
+#     r.set_bits_and_file_name(30704,'asdf')
 
-    r.listen()
+#     r.listen()
 
-    binary_data = r.data_block_processing()
+#     binary_data = r.data_block_processing()
 
-    print(success(binary_data, transmitted_bits))
+#     print(success(binary_data, transmitted_bits))
 
-    print(r.decode_text(binary_data))
+#     print(r.decode_text(binary_data))
 
 
 ### OLD CODE:::
