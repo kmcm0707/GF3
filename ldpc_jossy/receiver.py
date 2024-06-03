@@ -19,6 +19,7 @@ class receiver(audio_modem):
         self.past_centers = []
         self.past_angle = 0
         self.past_gradient = 0
+        self.past_change = 0
         self.entire_data = None
         self.bits = None
         self.file_name = None
@@ -33,7 +34,7 @@ class receiver(audio_modem):
         # x and y are the time signals to be compared
         x = self.chirp
         cross_correlation = []
-        
+        plot_data = data
         data = data[:200000]
         print(len(data))
         n = len(x)
@@ -44,6 +45,11 @@ class receiver(audio_modem):
         cross_correlation = uniform_filter1d(cross_correlation, size=5)
         max_index = np.argmax(cross_correlation)
         self.chirp_start = lags[max_index]
+        positions = np.arange(0, len(data))
+        plt.plot(positions[:lags[max_index] -1024],data[:lags[max_index] -1024])
+        plt.plot(positions[lags[max_index] - 1024:lags[max_index] +len(self.chirp_p_s) - 1024],data[lags[max_index] - 1024:lags[max_index] +len(self.chirp_p_s) - 1024], color='r')
+        plt.plot(positions[lags[max_index] +len(self.chirp_p_s) - 1024:],data[lags[max_index] +len(self.chirp_p_s) - 1024:], color='g')
+        plt.show()
         return lags[max_index], cross_correlation, lags
     
     def channel_estimation(self, block, ideal_block):
@@ -128,6 +134,7 @@ class receiver(audio_modem):
         past_angle = self.past_angle
         past_gradient = self.past_gradient
         past_centers = self.past_centers
+        past_change = self.past_change
 
         corrected = current_OFDM
         corrected = corrected * np.exp(-1j * past_gradient)
@@ -148,13 +155,22 @@ class receiver(audio_modem):
             centers = kmeans.cluster_centers_
             labels = kmeans.labels_
             complex_centers = centers[:, 0] + 1j * centers[:, 1]
-            distance = complex_centers - inti_complex
-            d = np.array(distance)
-            angle = np.angle(d)
-            for i in range(len(angle)):
+            #print("Centers: ", complex_centers)
+            complex_angles = np.angle(complex_centers)
+            inti_angles = np.angle(inti_complex)
+            """distance = complex_centers - inti_complex"""
+            angle_diff = complex_angles - inti_angles
+            angle = np.array(angle_diff)
+            #print("distance", d)
+            #angle = np.angle(d)
+            #print("angle", angle)
+            """for i in range(len(angle)):
                 if angle[i] < 0:
-                    angle[i] = 2 * np.pi + angle[i]
-            angle = np.mean(angle) - np.pi
+                    angle[i] = 2 * np.pi + angle[i]"""
+            angle = np.mean(angle)
+            #print("mean angle", angle)
+            """if np.abs(angle) > 0.3:
+                angle = 0"""
             #print(angle)
             corrected = corrected * np.exp(-1j * angle)
             """angle = np.mean(angle)
@@ -177,23 +193,39 @@ class receiver(audio_modem):
         known_angles = np.unwrap(known_angles)
         diff = known_angles - predicted_ideal_angle
         diff = np.unwrap(diff)
-        positions = np.arange(len(corrected)) + 1
+
+
+        for index, i in enumerate(diff):
+            if i > np.pi + 1:
+                diff[index] = diff[index] - 2 * np.pi
+            if i < -np.pi - 1:
+                diff[index] = diff[index] + 2 * np.pi
+        positions = np.arange(len(corrected)) 
         grad, intercept, r_value, p_value, std_err = stats.linregress(positions, diff)
         if math.isclose(intercept, 2* np.pi, abs_tol=2):
             intercept = intercept - 2 * np.pi
         if math.isclose(intercept, -2* np.pi, abs_tol=2):
             intercept = intercept + 2 * np.pi
 
-        gradient = grad * np.arange(len(current_OFDM)) + intercept
+        gradient_2 = grad * np.arange(len(current_OFDM)) 
 
-        if np.mean(np.abs(gradient)) > 0.6:
-            gradient = 0
-        corrected = corrected * np.exp(-1j * gradient)
-        gradient = gradient + past_gradient
+        if np.mean(np.abs(gradient_2)) > 1:
+            gradient_2 = self.past_change
+        corrected = corrected * np.exp(-1j * gradient_2)
+        gradient = gradient_2 + past_gradient
+
+        self.past_change = gradient_2
 
         self.past_centers = centers
         self.past_angle = past_angle
         self.past_gradient = gradient
+        #print("Gradient: ", grad, "Intercept: ", intercept)
+        #print("Angle: ", past_angle)
+        
+        #print("Gradient 2: ", gradient_2)
+        """plt.plot(positions, gradient_2)
+        plt.show()"""
+        
         return corrected
 
     def ofdm_one_block(self, data_block, sigma2):
@@ -207,23 +239,25 @@ class receiver(audio_modem):
         freq = freq / self.channel_freq
 
         # Remove Complex Conjugate Bins
-        freq = freq[self.ofdm_bin_min:self.ofdm_bin_max+1]
+        freq = freq[1:2048]
 
-        corrected = self.combined_correction(freq)
+        
 
         # Remove Watermark
 
-        assert len(corrected) == self.bin_length
+        
 
         watermark = self.generate_known_ofdm_block_mod4()
-        watermark = watermark[self.ofdm_bin_min-1:self.ofdm_bin_max]
+        watermark = watermark
         # print("Watermark: ", watermark[0:5])
 
         # Rotate Watermark
-        corrected = corrected * np.exp(-1j * watermark * np.pi / 2)
+        freq = freq * np.exp(-1j * watermark * np.pi / 2)
+        corrected = freq
+        corrected = self.combined_correction(freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
+        corrected = corrected
 
         self.constellations.extend(corrected)
-
         # Find Closest Constellation Point
         decoded = []
         llrs = []
@@ -291,7 +325,7 @@ class receiver(audio_modem):
 
         ofdm_freq = ofdm_freq / channel_freq
         ofdm_freq = ofdm_freq[1:2048]
-        corrected = self.combined_correction(ofdm_freq[self.ofdm_bin_min:self.ofdm_bin_max+1])
+        corrected = self.combined_correction(ofdm_freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
 
         index = 1
         #self.sigma2 = self.calculate_sigma2_one_block(np.fft.fft(ofdm_block_one)) / 2
@@ -316,7 +350,10 @@ class receiver(audio_modem):
             all_data.extend(restofdata)
             index += 1
 
+        
         while len(all_data) < self.bits:
+            #print("\n")
+            #print("Index: ", index)
             ofdm_block = actual_data[index * (self.ofdm_symbol_size + self.ofdm_prefix_size): (index + 1) * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
             ofdm_block = ofdm_block[self.ofdm_prefix_size:]
 
@@ -334,7 +371,6 @@ class receiver(audio_modem):
 
             all_data.extend(decoded)
             index += 1
-
         all_data = all_data[:self.bits]
         return all_data
     
@@ -432,18 +468,45 @@ if __name__ == "__main__":
             colors.append('b')
         elif (ldpc_bits[index], ldpc_bits[index+1]) == (1, 0):
             colors.append('y')
+    
+    for index in range(29,41):
+        
+        """plt.scatter(np.real(r.constellations[648 * index:648 * (index+1)]), np.imag(r.constellations[648 * index:648 * (index+1)]), c=colors[648 * index:648 * (index+1)])
+        plt.axhline(0, color='black', lw=0.5)
+        plt.axvline(0, color='black', lw=0.5)
+        plt.show()"""
 
-    index = 2
-    plt.scatter(np.real(r.constellations[648 * index:648 * (index+1)]), np.imag(r.constellations[648 * index:648 * (index+1)]), c=colors[648 * index:648 * (index+1)])
-    plt.axhline(0, color='black', lw=0.5)
-    plt.axvline(0, color='black', lw=0.5)
-    plt.show()
+        if False:
+            plt.scatter(np.real(r.constellations[648 * index:648 * (index+1)]), np.imag(r.constellations[648 * index:648 * (index+1)]), c=colors[648 * index:648 * (index+1)])
+            plt.axhline(0, color='black', lw=0.5)
+            plt.axvline(0, color='black', lw=0.5)
+            plt.show()
 
-    index = 4
-    print(success(ldpc_bits[648 * index:648 * (index+1)], ldpc_bits_r[648 * index:648 * (index+1)]))
-    print(success(binary_data[648 * index:648 * (index+1)], transmitted_bits[648 * index:648 * (index+1)]))
+        if index == 30:
+            plt.scatter(np.real(r.constellations[648 * index:648 * (index+1)]), np.imag(r.constellations[648 * index:648 * (index+1)]), c=colors[648 * index:648 * (index+1)])
+            plt.axhline(0, color='black', lw=0.5)
+            plt.axvline(0, color='black', lw=0.5)
+            plt.show()
 
-    """print(r.decode_text(binary_data))"""
+        if index == 40:
+            plt.scatter(np.real(r.constellations[648 * index:648 * (index+1)]), np.imag(r.constellations[648 * index:648 * (index+1)]), c=colors[648 * index:648 * (index+1)])
+            plt.axhline(0, color='black', lw=0.5)
+            plt.axvline(0, color='black', lw=0.5)
+            plt.show()
+
+
+
+    index = 0
+    print(len(ldpc_bits), len(ldpc_bits_r), len(binary_data), len(r.constellations))
+    for index in range(0, 40):
+        print(success(ldpc_bits[648 * index:648 * (index+1)], ldpc_bits_r[648 * index:648 * (index+1)]))
+
+
+    print("ldpc")
+    for index in range(0, 40):
+        print(success(binary_data[648 * index:648 * (index+1)], transmitted_bits[648 * index:648 * (index+1)]))
+
+    #print(r.decode_text(binary_data))
 
     channel_freq = r.channel_freq
     print(r.chirp_start)
