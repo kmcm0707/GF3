@@ -288,7 +288,6 @@ class receiver(audio_modem):
 
         return decoded, llrs
 
-
     def ldpc_decode_one_block(self, to_decode, llrs, mode="soft"):
         to_decode = np.array(to_decode)
         to_decode = np.reshape(to_decode, len(to_decode))
