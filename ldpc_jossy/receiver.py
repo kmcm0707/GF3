@@ -8,6 +8,8 @@ from scipy import stats
 import math
 import matplotlib.pyplot as plt
 
+from transmitter import transmitter
+
 class receiver(audio_modem):
     def __init__(self):
         
@@ -24,6 +26,8 @@ class receiver(audio_modem):
         self.bits = None
         self.file_name = None
         self.sigma2 = None
+
+        self.t = transmitter() # Used for iterative channel estimation
 
     def set_bits_and_file_name(self, bits, file_name):
         self.bits = bits
@@ -52,27 +56,37 @@ class receiver(audio_modem):
         plt.show()
         return lags[max_index], cross_correlation, lags
     
-    def channel_estimation(self, block, ideal_block):
-        # Find Channel Response
-        # H = Y/X
-        # Y = Recieved OFDM Blocks
-        # X = Ideal OFDM Blocks
-        # H = Channel Response
-        self.channel_freq = np.true_divide(block, ideal_block, out=np.zeros_like(block), where=ideal_block!=0).astype(complex)
-        self.channel_freq[0] = 1
-        self.channel_freq[self.ofdm_symbol_size // 2] = 1
+    def channel_estimation(self, block, ideal_block, mode = "basic"):
+        """ N.B. doesn't update self.channel_freq!! Find Channel Response - find from received OFDM block and expected (tranmsitted) OFDM block in freq domain """
 
-        time_freq = np.fft.ifft(self.channel_freq)
-        time_freq = time_freq.real
-        filter = self.ofdm_symbol_size
-        time_freq = time_freq[0:filter]
-        time_freq = np.pad(time_freq, (0, self.ofdm_symbol_size - filter), 'constant', constant_values=(0, 0))
-        channel_freq = np.fft.fft(time_freq)
-        self.channel_freq = channel_freq
-        return self.channel_freq
+        # Y = Recieved OFDM Blocks  "block"
+        # X = Ideal OFDM Blocks     "ideal_block"
+        # H = Channel Response
+
+        if mode == "basic":
+            # H = Y/X
+            channel_freq = np.true_divide(block, ideal_block, out=np.ones_like(block), where=ideal_block!=0).astype(complex)
+        elif mode == "wiener":
+            lambda_val = 1000
+            channel_freq = np.true_divide(block * np.conj(ideal_block), (ideal_block * np.conj(ideal_block) * lambda_val), where=ideal_block!=0, out=np.ones_like(block)).astype(complex)
+        else:
+            raise Exception("Only basic and wiener are valid channel_estimation modes!")
+
+        # self.channel_freq[0] = 1
+        # self.channel_freq[self.ofdm_symbol_size // 2] = 1
+
+        # time_freq = np.fft.ifft(self.channel_freq)
+        # time_freq = time_freq.real
+        # filter = self.ofdm_symbol_size
+        # time_freq = time_freq[0:filter]
+        # time_freq = np.pad(time_freq, (0, self.ofdm_symbol_size - filter), 'constant', constant_values=(0, 0))
+        # channel_freq = np.fft.fft(time_freq)
+        # self.channel_freq = channel_freq
+
+        return channel_freq
 
     def find_data_index(self, data, start_index):
-        # Find Data Start
+        """ Find Data Start """
         self.data_index = start_index + len(self.chirp_p_s) - self.ofdm_prefix_size
         return self.data_index
     
@@ -229,7 +243,7 @@ class receiver(audio_modem):
         return corrected
 
     def ofdm_one_block(self, data_block, sigma2):
-        """Decode one block of data"""
+        """Decode one block of data - returns (decoded bits - for hard LDPC decoding, LLRs - for soft LDPC decoding)"""
         assert len(data_block) == self.ofdm_symbol_size
 
         # DFT
@@ -241,21 +255,14 @@ class receiver(audio_modem):
         # Remove Complex Conjugate Bins
         freq = freq[1:2048]
 
-        
-
         # Remove Watermark
-
-        
-
         watermark = self.generate_known_ofdm_block_mod4()
-        watermark = watermark
         # print("Watermark: ", watermark[0:5])
 
         # Rotate Watermark
         freq = freq * np.exp(-1j * watermark * np.pi / 2)
         corrected = freq
         corrected = self.combined_correction(freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
-        corrected = corrected
 
         self.constellations.extend(corrected)
         # Find Closest Constellation Point
@@ -274,6 +281,8 @@ class receiver(audio_modem):
         return decoded, llrs
 
     def ldpc_decode_one_block(self, to_decode, llrs, mode="soft"):
+        """ Returns LDPC decoding of one one LDPC block """
+
         to_decode = np.array(to_decode)
         to_decode = np.reshape(to_decode, len(to_decode))
         llrs = np.array(llrs)
@@ -306,35 +315,47 @@ class receiver(audio_modem):
             
         return decoded
 
-    def data_block_processing(self, header = False):
-        all_data = []
-        actual_data = self.entire_data[self.data_index:]
-        ofdm_block_one = actual_data[:self.ofdm_symbol_size+self.ofdm_prefix_size]
-        ofdm_block_one = ofdm_block_one[self.ofdm_prefix_size:]
-        self.pre_ldpc_data = []
+    def update_channel_estimate(self, received_ofdm_block, decoded_bits):
+        generated_ldpc_block = self.t.ldpc_encode(decoded_bits)
+        generated_ofdm_block = self.t.ofdm(generated_ldpc_block)[self.ofdm_prefix_size:]
+
+        generated_ofdm_block[0] = 1 # Not sure why this is needed?
+
+        return self.channel_estimation(np.fft.fft(received_ofdm_block), np.fft.fft(generated_ofdm_block), mode="basic")
+
+    def data_block_processing(self, data, header = False):
+        """ Main processsing for data block, post synchronisation - 'data' is the data_block"""
+
+        all_data = [] # To be returned
+
+        # actual_data = self.entire_data[self.data_index:]
+        # ofdm_block_one = actual_data[:self.ofdm_symbol_size+self.ofdm_prefix_size]
+        # ofdm_block_one = ofdm_block_one[self.ofdm_prefix_size:]
+        # self.pre_ldpc_data = []
+
+        ofdm_block_one = data[self.ofdm_prefix_size:self.ofdm_symbol_size + self.ofdm_prefix_size]
+        self.pre_ldpc_data = [] # For Testing
+
         ideal_block = self.generate_known_ofdm_block()
 
         assert len(ofdm_block_one) == self.ofdm_symbol_size
 
-        channel_freq = self.channel_estimation(np.fft.fft(ofdm_block_one), ideal_block)
-
-        ofdm_freq = np.fft.fft(ofdm_block_one)
-
-        #sigma2 = self.calculate_sigma2(ofdm_freq, ideal_block)
+        self.channel_freq = self.channel_estimation(np.fft.fft(ofdm_block_one), ideal_block)
         
-
-        ofdm_freq = ofdm_freq / channel_freq
+        # INITIAL PHASE CORRECTION
+        ofdm_freq = np.fft.fft(ofdm_block_one)
+        ofdm_freq = ofdm_freq / self.channel_freq
         ofdm_freq = ofdm_freq[1:2048]
         corrected = self.combined_correction(ofdm_freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
 
         index = 1
-        #self.sigma2 = self.calculate_sigma2_one_block(np.fft.fft(ofdm_block_one)) / 2
+        # self.sigma2 = self.calculate_sigma2_one_block(np.fft.fft(ofdm_block_one)) / 2
         self.sigma2 = 1
 
         if header:
             # Extract Header
 
-            ofdm_block_two = actual_data[self.ofdm_symbol_size+self.ofdm_prefix_size: 2 * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
+            ofdm_block_two = data[self.ofdm_symbol_size+self.ofdm_prefix_size: 2 * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
             ofdm_block_two = ofdm_block_two[self.ofdm_prefix_size:]
 
             # sigma2 = self.calculate_sigma2_one_block(ofdm_block_two)
@@ -350,32 +371,41 @@ class receiver(audio_modem):
             all_data.extend(restofdata)
             index += 1
 
-        
         while len(all_data) < self.bits:
-            #print("\n")
             #print("Index: ", index)
-            ofdm_block = actual_data[index * (self.ofdm_symbol_size + self.ofdm_prefix_size): (index + 1) * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
-            ofdm_block = ofdm_block[self.ofdm_prefix_size:]
-
-
-
-            #sigma2 = self.calculate_sigma2_one_block(ofdm_block)
+            ofdm_block = data[index * (self.ofdm_symbol_size + self.ofdm_prefix_size): (index + 1) * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
+            ofdm_block = ofdm_block[self.ofdm_prefix_size:] # Remove cyclic prefix
 
             assert len(ofdm_block) == self.ofdm_symbol_size
 
             data_bins, llrs = self.ofdm_one_block(ofdm_block, self.sigma2)
 
-            self.pre_ldpc_data.extend(data_bins)
+            self.pre_ldpc_data.extend(data_bins) # For Testing
 
             decoded = self.ldpc_decode_one_block(data_bins, llrs)
 
             all_data.extend(decoded)
             index += 1
+
+            print(self.bin_length, len(decoded))
+
+            updated_channel_estimate = self.update_channel_estimate(ofdm_block, np.array(decoded))
+            plt.plot(updated_channel_estimate, color="green", label="Updated channel estimate")
+            plt.plot(self.channel_freq, color="red", label="channel estimate before updating")
+            plt.title("Updated vs. prior channel estimate( FREQ DOMAIN)")
+            plt.legend()
+            plt.show()
+
+            plt.plot(np.fft.ifft(updated_channel_estimate), color="green", label="Updated channel estimate")
+            plt.plot(np.fft.ifft(self.channel_freq), color="red", label="channel estimate before updating")
+            plt.title("Updated vs. prior channel estimate (TIME DOMAIN)")
+            plt.legend()
+            plt.show()
         all_data = all_data[:self.bits]
         return all_data
     
     def extract_header(self, data):
-        # Extract Header
+        """ Extract Header """
         data = np.array(data)
         data = np.reshape(data, len(data))
 
@@ -412,9 +442,13 @@ class receiver(audio_modem):
         return restofdata
 
     def listen(self):
+        # TODO
         self.entire_data = np.loadtxt('../recording_3.csv', delimiter = ",", dtype = "float")
+        return self.entire_data
         
     def decode_text(self, binary_data):
+        """ Convert binary data to ascii characters """
+
         binary_data = np.array(binary_data).astype("str")
 
         ascii = [int(''.join(binary_data[i:i+8]), 2) for i in range(0, len(binary_data), 8)]
@@ -422,10 +456,10 @@ class receiver(audio_modem):
         return ''.join([chr(i) for i in ascii])
     
     def start(self):
-        self.listen()
-        start_index, cross_correlation, lags = self.find_start_index(self.entire_data)
+        data = self.listen()
+        start_index, cross_correlation, lags = self.find_start_index(data)
         data_index = self.find_data_index(self.entire_data, start_index)
-        return self.data_block_processing()
+        return self.data_block_processing(data[data_index:])
 
 def success(a, b):
     """find the percentage difference between two lists"""
@@ -437,8 +471,6 @@ def success(a, b):
 
     return successes
 
-from transmitter import transmitter
-
 if __name__ == "__main__":
     t =  transmitter()
 
@@ -449,7 +481,7 @@ if __name__ == "__main__":
 
     # print(r.decode_text([0, 1, 0, 0, 0, 0, 0, 1]))
 
-    r.set_bits_and_file_name(30704,'asdf')
+    r.set_bits_and_file_name(30704, 'asdf')
 
     r.listen()
 

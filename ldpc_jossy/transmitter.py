@@ -98,7 +98,7 @@ class transmitter(audio_modem):
         # Inverse DFT
         info = np.fft.ifft(symbols)
         assert info.shape[1] == self.ofdm_symbol_size
-        for i in info[5]:
+        for i in info[0]:
             assert i.imag == 0
         to_transmit = np.zeros(shape = (len(info), self.ofdm_symbol_size + self.ofdm_prefix_size))
         for index, x in enumerate(info):
