@@ -167,7 +167,7 @@ class receiver(audio_modem):
             """for i in range(len(angle)):
                 if angle[i] < 0:
                     angle[i] = 2 * np.pi + angle[i]"""
-            angle = np.mean(angle)
+            angle = np.mean(angle) #- np.pi
             #print("mean angle", angle)
             """if np.abs(angle) > 0.3:
                 angle = 0"""
@@ -177,7 +177,7 @@ class receiver(audio_modem):
             if angle < 0:
                 angle = 2 * np.pi + angle
             corrected = corrected * np.exp(-1j * angle)"""
-            past_angle += angle
+            past_angle += angle 
         else:
             kmeans = KMeans(n_clusters=4, init=inti ).fit(np.array([np.real(corrected), np.imag(corrected)]).T)
             centers = kmeans.cluster_centers_
@@ -207,7 +207,7 @@ class receiver(audio_modem):
         if math.isclose(intercept, -2* np.pi, abs_tol=2):
             intercept = intercept + 2 * np.pi
 
-        gradient_2 = grad * np.arange(len(current_OFDM)) 
+        gradient_2 = grad * np.arange(len(current_OFDM)) #+ intercept
 
         if np.mean(np.abs(gradient_2)) > 1:
             gradient_2 = self.past_change
