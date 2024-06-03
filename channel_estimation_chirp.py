@@ -23,7 +23,9 @@ def standered_estimation(x, y, n):
 
     Y = np.fft.fft(y, n)
 
-    channel_estimation = Y / X
+    #channel_estimation = Y / X
+    print("changed")
+    channel_estimation = np.conj(X) @ Y.T @ np.linalg.inv(np.conj(X) @ X.T + 1000)
     
     return channel_estimation
 
