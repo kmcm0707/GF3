@@ -66,9 +66,7 @@ class audio_modem:
         assert len(total_block) == self.ofdm_symbol_size
 
         return total_block
-        
-        
-    
+         
     def generate_known_ofdm_block_cp_ifft(self):
         """Generate known OFDM block with cyclic prefix and IFFT"""
         known_ofdm_block_mod4 = self.generate_known_ofdm_block_mod4()
@@ -130,6 +128,16 @@ class audio_modem:
             elif (binary_symbol[i], binary_symbol[i+1]) == (1, 0):
                 mod4_symbol.append(3)      
         return mod4_symbol
+    
+    def binary_to_constellation_point(self, binary_symbol):
+        """Converts a binary symbol to a constellation point"""
+        #print(binary_symbol)
+        mod4_symbol = self.binary_symbol_to_mod4(binary_symbol)
+        #print("Mod4 Symbol:", len(mod4_symbol))
+        constellation_point = np.zeros(len(mod4_symbol)).astype('complex')
+        for i in range(len(mod4_symbol)):
+            constellation_point[i] = self.mod4_to_gray(mod4_symbol[i])
+        return constellation_point
     
     def constellation_point_to_binary(self, constellation_point):
         """Converts a constellation point to a binary symbol"""
