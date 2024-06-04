@@ -13,8 +13,8 @@ else:
 class audio_modem:
     def __init__(self,
                  sampling_frequency = 48000,
-                 chirp_start = 761.72, # Frequency in Hz
-                 chirp_end = 8824.22, # Frequency in Hz
+                 chirp_start = 761.71875, # Frequency in Hz
+                 chirp_end = 8824.21875, # Frequency in Hz
                  chirp_duration = 1.365, # Time in seconds
                  ofdm_symbol_size = 4096,
                  ofdm_prefix_size = 1024,
@@ -42,8 +42,8 @@ class audio_modem:
     
     def generate_chirp(self, chirp_start, chirp_end, chirp_duration):
         """Generate Chirp signal with chirp_duration length (number of samples at sampling frequency), from chirp_start to chirp_end frequencies (in terms of bin number)"""
-        t = np.linspace(0, int(chirp_duration), int(self.sampling_frequency * chirp_duration), endpoint=False)
-        chirp = signal.chirp(t, f0=chirp_start, f1=chirp_end, t1=int(chirp_duration), method='linear').astype(np.float32)
+        t = np.linspace(0, chirp_duration, int(self.sampling_frequency * chirp_duration), endpoint=False)
+        chirp = signal.chirp(t, f0=chirp_start, f1=chirp_end, t1=chirp_duration, method='linear').astype(np.float32)
         return chirp
 
     def generate_known_ofdm_block_mod4(self):
