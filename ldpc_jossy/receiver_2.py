@@ -46,7 +46,14 @@ class receiver(audio_modem):
         lags = np.arange(-n + 1, N) 
         cross_correlation.append(scipy.signal.correlate(data, x,mode='full', method='fft'))
         cross_correlation = np.array(cross_correlation)
+        cross_correlation = np.reshape(cross_correlation, cross_correlation.shape[1])
+        print(cross_correlation.shape)
+        plt.plot(cross_correlation)
+        plt.show()
+        cross_correlation = np.abs(cross_correlation)
         cross_correlation = uniform_filter1d(cross_correlation, size=5)
+        plt.plot(cross_correlation)
+        plt.show()
         max_index = np.argmax(cross_correlation)
         self.chirp_start = lags[max_index]
         positions = np.arange(0, len(data))
@@ -481,7 +488,7 @@ class receiver(audio_modem):
         return restofdata
 
     def listen(self):
-        self.entire_data = np.loadtxt('../recording_3.csv', delimiter = ",", dtype = "float")
+        self.entire_data = np.loadtxt('../malachy-plug-test.csv', delimiter = ",", dtype = "float")
         
     def decode_text(self, binary_data):
         binary_data = np.array(binary_data).astype("str")
