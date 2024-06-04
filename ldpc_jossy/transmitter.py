@@ -111,7 +111,7 @@ class transmitter(audio_modem):
         return to_transmit
     
     def assemble_all(self, to_transmit, chirp_p_s, known_ofdm_cp_ifft):
-        return np.concatenate((chirp_p_s, known_ofdm_cp_ifft, to_transmit, chirp_p_s), axis = None)
+        return np.concatenate((chirp_p_s, known_ofdm_cp_ifft, known_ofdm_cp_ifft, known_ofdm_cp_ifft, known_ofdm_cp_ifft, known_ofdm_cp_ifft, to_transmit, chirp_p_s), axis = None)
     
     def play_sound(self, samples):
         p = pyaudio.PyAudio()
