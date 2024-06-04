@@ -323,7 +323,7 @@ class receiver(audio_modem):
             
         return decoded
 
-    def data_block_processing(self, header = False):
+    def data_block_processing(self, header = False, five_blocks = False):
         all_data = []
         actual_data = self.entire_data[self.data_index:]
         ofdm_block_one = actual_data[:self.ofdm_symbol_size+self.ofdm_prefix_size]
@@ -344,7 +344,15 @@ class receiver(audio_modem):
         corrected = self.combined_correction(ofdm_freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
 
         index = 1
-        self.sigma2 = self.calculate_sigma2_one_block(np.fft.fft(ofdm_block_one)) / 2
+        if five_blocks == False:
+            self.sigma2 = self.calculate_sigma2_one_block(np.fft.fft(ofdm_block_one)) / 2
+        else:
+            ofdm_block_two = actual_data[self.ofdm_symbol_size+self.ofdm_prefix_size: 2 * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
+            ofdm_block_two = ofdm_block_two[self.ofdm_prefix_size:]
+            channel_freq_2 = self.channel_estimation(np.fft.fft(ofdm_block_two), ideal_block)
+
+            ofdm_freq_2 = np.fft.fft(ofdm_block_two)
+            
         #self.sigma2 = 1
 
         if header:
