@@ -48,19 +48,19 @@ class receiver(audio_modem):
         cross_correlation = np.array(cross_correlation)
         cross_correlation = np.reshape(cross_correlation, cross_correlation.shape[1])
         print(cross_correlation.shape)
-        plt.plot(cross_correlation)
-        plt.show()
+        #plt.plot(cross_correlation)
+        #plt.show()
         cross_correlation = np.abs(cross_correlation)
         cross_correlation = uniform_filter1d(cross_correlation, size=5)
-        plt.plot(cross_correlation)
-        plt.show()
+        #plt.plot(cross_correlation)
+        #plt.show()
         max_index = np.argmax(cross_correlation)
         self.chirp_start = lags[max_index]
         positions = np.arange(0, len(data))
-        plt.plot(positions[:lags[max_index] -1024],data[:lags[max_index] -1024])
-        plt.plot(positions[lags[max_index] - 1024:lags[max_index] +len(self.chirp_p_s) - 1024],data[lags[max_index] - 1024:lags[max_index] +len(self.chirp_p_s) - 1024], color='r')
-        plt.plot(positions[lags[max_index] +len(self.chirp_p_s) - 1024:],data[lags[max_index] +len(self.chirp_p_s) - 1024:], color='g')
-        plt.show()
+        #plt.plot(positions[:lags[max_index] -1024],data[:lags[max_index] -1024])
+        #plt.plot(positions[lags[max_index] - 1024:lags[max_index] +len(self.chirp_p_s) - 1024],data[lags[max_index] - 1024:lags[max_index] +len(self.chirp_p_s) - 1024], color='r')
+        #plt.plot(positions[lags[max_index] +len(self.chirp_p_s) - 1024:],data[lags[max_index] +len(self.chirp_p_s) - 1024:], color='g')
+        #plt.show()
         return lags[max_index], cross_correlation, lags
     
     def find_end_index(self, data):
@@ -350,7 +350,6 @@ class receiver(audio_modem):
             decoded_temp = []
             decoded_temp += ([1 if k < 0 else 0 for k in decoded_block])
             self.first_decoded.append(decoded_temp)
-            # print("Iterations ", iters)
 
             decoded_block = decoded_block[:-(self.c.K)] # No idea what the extra information is
             decoded += ([1 if k < 0 else 0 for k in decoded_block])
@@ -360,9 +359,6 @@ class receiver(audio_modem):
             i = 10 * (0.5 - i) # Do weightings
 
             decoded_block, iters = self.c.decode(i)
-
-            # print("Iterations ", iters)
-
             decoded_block = decoded_block[:-(self.c.K)] # No idea what the extra information is
             decoded += ([1 if k < 0 else 0 for k in decoded_block])
         else:
@@ -386,7 +382,7 @@ class receiver(audio_modem):
         index = 1
         if five_blocks == False:
             ofdm_freq = np.fft.fft(ofdm_block_one)
-            self.sigma2 = 2
+            self.sigma2 = self.calculate_sigma2_one_block(ofdm_freq) // 2
             ofdm_freq = ofdm_freq / channel_freq
             ofdm_freq = ofdm_freq[1:2048]
             corrected = self.combined_correction(ofdm_freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
@@ -449,11 +445,11 @@ class receiver(audio_modem):
 
             data_bins, llrs = self.ofdm_one_block(ofdm_block, self.sigma2)
 
-            self.pre_ldpc_data.extend(data_bins)
+            #self.pre_ldpc_data.extend(data_bins)
 
-            decoded = self.ldpc_decode_one_block(data_bins, llrs)
+            #decoded = self.ldpc_decode_one_block(data_bins, llrs)
 
-            all_data.extend(decoded)
+            all_data.extend(data_bins[:-(self.c.K)])
             index += 1
         
         self.corrected = np.array(self.corrected)
@@ -531,7 +527,7 @@ class receiver(audio_modem):
         restofdata = []
         for i in range(0, len(data), 8):
             if ((data[i:i+8] == null_character).all()):
-                print(i)
+                #print(i)
                 num_nulls += 1
                 if num_nulls == 2:
                     name_start = i+8
@@ -543,6 +539,7 @@ class receiver(audio_modem):
                     header.extend(data[header_start:i])
                 if num_nulls == 6:
                     restofdata.extend(data[i+8:])
+                    print('data start:', i+8)
                     break
         #print("Name: ", name)
         #print("Header: ", header)
@@ -578,26 +575,26 @@ class receiver(audio_modem):
 
     def start(self):
         self.listen()
-        print(self.entire_data.shape)
+        #print(self.entire_data.shape)
         start_index, cross_correlation, lags = self.find_start_index(self.entire_data)
         end_index, cross_correlation, lags = self.find_end_index(self.entire_data)
         end_index = end_index - self.ofdm_prefix_size
         data_index = self.find_data_index(self.entire_data, start_index)
         data_length = end_index - data_index
-        print("Data Index: ", data_length)
+        #print("Data Index: ", data_length)
         num_blocks = int(np.ceil(data_length / (self.ofdm_symbol_size + self.ofdm_prefix_size)))
         self.entire_data = self.entire_data[data_index:int(data_index + (num_blocks+1) * (self.ofdm_symbol_size + self.ofdm_prefix_size) + 1)]
         self.bits = int(num_blocks * self.c.K)
-        print("num_blocks: ", num_blocks)
-        #self.bits = 30704
-        print("bits: ", self.bits)
+        #print("num_blocks: ", num_blocks)
+        self.bits = 30704
+        #print("bits: ", self.bits)
         data = self.data_block_processing()
         print("Data: ", data[0:100])
-        #all_data = self.extract_header(data)
-        #self.bits = int(self.bits)
-        #all_data = all_data[:self.bits]
-        #self.save_decoded_file(all_data, self.bits)
-        return data
+        all_data = self.extract_header(data)
+        self.bits = int(self.bits)
+        all_data = all_data
+        self.save_decoded_file(all_data, self.bits)
+        return all_data
 
 def success(a, b):
     """find the percentage difference between two lists"""
@@ -616,7 +613,8 @@ from transmitter import transmitter
 if __name__ == "__main__":
     t =  transmitter()
 
-    transmitted_bits = t.process_file("max_test_in.txt")
+    transmitted_bits = t.process_file("hamlet_c.txt")
+    print(transmitted_bits[:100])
     ldpc_bits = t.ldpc_encode(transmitted_bits)
 
     r = receiver()
@@ -628,7 +626,11 @@ if __name__ == "__main__":
     r.listen()
 
     binary_data = r.start()
-    ldpc_bits_r = r.pre_ldpc_data
+    print(transmitted_bits[:100])
+    print(ldpc_bits[:100])
+    print(binary_data[:100])
+    ldpc_bits_r = r.pre_ldpc_data[168:]
+    print(ldpc_bits_r[:100])
     print(r.sigma2)
 
     
@@ -642,15 +644,15 @@ if __name__ == "__main__":
             colors.append('b')
         elif (ldpc_bits[index], ldpc_bits[index+1]) == (1, 0):
             colors.append('y')
-    
-    for index in range(0,10):
+    r.constellations = r.constellations[168//2:]
+    for index in range(0,13):
         
         """plt.scatter(np.real(r.constellations[648 * index:648 * (index+1)]), np.imag(r.constellations[648 * index:648 * (index+1)]), c=colors[648 * index:648 * (index+1)])
         plt.axhline(0, color='black', lw=0.5)
         plt.axvline(0, color='black', lw=0.5)
         plt.show()"""
 
-        if True:
+        if False:
             plt.scatter(np.real(r.constellations[648 * index:648 * (index+1)]), np.imag(r.constellations[648 * index:648 * (index+1)]), c=colors[648 * index:648 * (index+1)])
             plt.axhline(0, color='black', lw=0.5)
             plt.axvline(0, color='black', lw=0.5)
@@ -673,8 +675,21 @@ if __name__ == "__main__":
 
     index = 0
     print(len(ldpc_bits), len(ldpc_bits_r), len(binary_data), len(r.constellations))
-    for index in range(0, 40):
-        print(success(ldpc_bits[648 * 2 * index:648 * 2 * (index+1)], ldpc_bits_r[648 * 2 * index: 648 * 2 * (index+1)]))
+    print('1',success(ldpc_bits[0:100], ldpc_bits_r[0:100]))
+    print('2',success(ldpc_bits[100:200], ldpc_bits_r[100:200]))
+    print('3',success(ldpc_bits[200:300], ldpc_bits_r[200:300]))
+    print('4',success(ldpc_bits[300:400], ldpc_bits_r[300:400]))
+    print('5',success(ldpc_bits[400:500], ldpc_bits_r[400:500]))
+    print('6',success(ldpc_bits[500:600], ldpc_bits_r[500:600]))
+    print('7',success(ldpc_bits[600:700], ldpc_bits_r[600:700]))
+    print('8',success(ldpc_bits[700:800], ldpc_bits_r[700:800]))
+    print('9',success(ldpc_bits[800:900], ldpc_bits_r[800:900]))
+    print('10',success(ldpc_bits[900:1000], ldpc_bits_r[900:1000]))
+    print('11',success(ldpc_bits[1000:1100], ldpc_bits_r[1000:1100]))
+    print('12',success(ldpc_bits[1100:1200], ldpc_bits_r[1100:1200]))
+
+    """for index in range(0, 40):
+        print(success(ldpc_bits[648 * 2 * index:648 * 2 * (index+1)], ldpc_bits_r[648 * 2 * index: 648 * 2 * (index+1)]))"""
 
 
     print("ldpc")
