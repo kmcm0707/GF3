@@ -63,6 +63,30 @@ class receiver(audio_modem):
         plt.show()
         return lags[max_index], cross_correlation, lags
     
+    def find_end_index(self, data):
+        # Find Chirp End
+        # x and y are the time signals to be compared
+        x = self.chirp_p_s
+        cross_correlation = []
+        plot_data = data
+        data = data[300000:]
+        print(len(data))
+        n = len(x)
+        N = len(data)
+        lags = np.arange(-n + 1, N) 
+        cross_correlation.append(scipy.signal.correlate(data, x,mode='full', method='fft'))
+        cross_correlation = np.array(cross_correlation)
+        cross_correlation = np.reshape(cross_correlation, cross_correlation.shape[1])
+    
+        cross_correlation = np.abs(cross_correlation)
+        cross_correlation = uniform_filter1d(cross_correlation, size=5)
+
+        max_index = np.argmax(cross_correlation)
+        self.chirp_start = lags[max_index]
+        positions = np.arange(0, len(data))
+        
+        return lags[max_index] + 300000, cross_correlation, lags
+    
     def channel_estimation(self, block, ideal_block):
         # Find Channel Response
         # H = Y/X
@@ -87,6 +111,22 @@ class receiver(audio_modem):
         self.data_index = start_index + len(self.chirp_p_s) - self.ofdm_prefix_size
         return self.data_index
     
+    def calculate_sigma2_five_block(self, recieved, ideal):
+        ideal = ideal * self.channel_freq
+        ideal = np.concatenate(ideal)
+        recieved = np.concatenate(recieved)
+        real_square_error = (recieved.real - ideal.real) ** 2
+        real_square_error = real_square_error.astype(np.float32)
+        # print(real_square_error)
+        imag_square_error = (recieved.imag - ideal.imag) ** 2
+        imag_square_error = imag_square_error.astype(np.float32)
+        # print(imag_square_error)
+        all_errors = np.concatenate((real_square_error, imag_square_error))
+
+        sigma2 = np.mean(all_errors)
+        print("second guess sigma2", sigma2) # Should be ~ 0.1 ish for ideal channel?
+        return sigma2
+
     def calculate_sigma2(self, recieved, ideal):
         # TODO: CHECK WITH MAX CORRECT
         # Calculate Noise Power
@@ -330,7 +370,7 @@ class receiver(audio_modem):
             
         return decoded
 
-    def data_block_processing(self, header = False, five_blocks = False):
+    def data_block_processing(self, five_blocks = False):
         all_data = []
         actual_data = self.entire_data[self.data_index:]
         ofdm_block_one = actual_data[:self.ofdm_symbol_size+self.ofdm_prefix_size]
@@ -341,45 +381,61 @@ class receiver(audio_modem):
         assert len(ofdm_block_one) == self.ofdm_symbol_size
 
         channel_freq = self.channel_estimation(np.fft.fft(ofdm_block_one), ideal_block)
-
-        ofdm_freq = np.fft.fft(ofdm_block_one)
-
-        #sigma2 = self.calculate_sigma2(ofdm_freq, ideal_block)
-
-        ofdm_freq = ofdm_freq / channel_freq
-        ofdm_freq = ofdm_freq[1:2048]
-        corrected = self.combined_correction(ofdm_freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
+        self.channel_freq = channel_freq
 
         index = 1
         if five_blocks == False:
+            ofdm_freq = np.fft.fft(ofdm_block_one)
             self.sigma2 = self.calculate_sigma2_one_block(np.fft.fft(ofdm_block_one)) / 2
+            ofdm_freq = ofdm_freq / channel_freq
+            ofdm_freq = ofdm_freq[1:2048]
+            corrected = self.combined_correction(ofdm_freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
         else:
             ofdm_block_two = actual_data[self.ofdm_symbol_size+self.ofdm_prefix_size: 2 * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
             ofdm_block_two = ofdm_block_two[self.ofdm_prefix_size:]
+            ofdm_block_three = actual_data[2 * (self.ofdm_symbol_size + self.ofdm_prefix_size): 3 * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
+            ofdm_block_three = ofdm_block_three[self.ofdm_prefix_size:]
+            ofdm_block_four = actual_data[3 * (self.ofdm_symbol_size + self.ofdm_prefix_size): 4 * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
+            ofdm_block_four = ofdm_block_four[self.ofdm_prefix_size:]
+            ofdm_block_five = actual_data[4 * (self.ofdm_symbol_size + self.ofdm_prefix_size): 5 * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
+            ofdm_block_five = ofdm_block_five[self.ofdm_prefix_size:]
+
             channel_freq_2 = self.channel_estimation(np.fft.fft(ofdm_block_two), ideal_block)
+            channel_freq_3 = self.channel_estimation(np.fft.fft(ofdm_block_three), ideal_block)
+            channel_freq_4 = self.channel_estimation(np.fft.fft(ofdm_block_four), ideal_block)
+            channel_freq_5 = self.channel_estimation(np.fft.fft(ofdm_block_five), ideal_block)
 
+            channel_freq = (channel_freq + channel_freq_2 + channel_freq_3 + channel_freq_4 + channel_freq_5) / 5
+            self.channel_freq = channel_freq
+
+            ofdm_freq_1 = np.fft.fft(ofdm_block_one)
             ofdm_freq_2 = np.fft.fft(ofdm_block_two)
-            
-        #self.sigma2 = 1
+            ofdm_freq_3 = np.fft.fft(ofdm_block_three)
+            ofdm_freq_4 = np.fft.fft(ofdm_block_four)
+            ofdm_freq_5 = np.fft.fft(ofdm_block_five)
 
-        if header:
-            # Extract Header
+            ofdm_freq_1 = ofdm_freq_1 / channel_freq
+            ofdm_freq_2 = ofdm_freq_2 / channel_freq
+            ofdm_freq_3 = ofdm_freq_3 / channel_freq
+            ofdm_freq_4 = ofdm_freq_4 / channel_freq
+            ofdm_freq_5 = ofdm_freq_5 / channel_freq
 
-            ofdm_block_two = actual_data[self.ofdm_symbol_size+self.ofdm_prefix_size: 2 * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
-            ofdm_block_two = ofdm_block_two[self.ofdm_prefix_size:]
+            ofdm_freq_1 = ofdm_freq_1[1:2048]
+            ofdm_freq_2 = ofdm_freq_2[1:2048]
+            ofdm_freq_3 = ofdm_freq_3[1:2048]
+            ofdm_freq_4 = ofdm_freq_4[1:2048]
+            ofdm_freq_5 = ofdm_freq_5[1:2048]
 
-            # sigma2 = self.calculate_sigma2_one_block(ofdm_block_two)
+            corrected_1 = self.combined_correction(ofdm_freq_1[self.ofdm_bin_min-1:self.ofdm_bin_max])
+            corrected_2 = self.combined_correction(ofdm_freq_2[self.ofdm_bin_min-1:self.ofdm_bin_max])
+            corrected_3 = self.combined_correction(ofdm_freq_3[self.ofdm_bin_min-1:self.ofdm_bin_max])
+            corrected_4 = self.combined_correction(ofdm_freq_4[self.ofdm_bin_min-1:self.ofdm_bin_max])
+            corrected_5 = self.combined_correction(ofdm_freq_5[self.ofdm_bin_min-1:self.ofdm_bin_max])
 
-            assert len(ofdm_block_two) == self.ofdm_symbol_size
+            ideal_block = self.generate_known_ofdm_block()
+            self.sigma2 = self.calculate_sigma2_five_block([corrected_1, corrected_2, corrected_3, corrected_4, corrected_5], [ideal_block, ideal_block, ideal_block, ideal_block, ideal_block])
+            index = 5
 
-            data_bins_two, llrs_two = self.ofdm_one_block(ofdm_block_two, self.sigma2)
-
-            decoded_two = self.ldpc_decode_one_block(data_bins_two, llrs_two)
-
-            restofdata = self.extract_header(decoded_two)
-
-            all_data.extend(restofdata)
-            index += 1
         
         while len(all_data) < self.bits:
             #print("\n")
@@ -399,6 +455,7 @@ class receiver(audio_modem):
 
             all_data.extend(decoded)
             index += 1
+        
         self.corrected = np.array(self.corrected)
         self.first_decoded = np.array(self.first_decoded)
         return self.data_block_processing_part_2()
@@ -451,7 +508,7 @@ class receiver(audio_modem):
         self.corrected = np.array(self.corrected)
         self.first_decoded = np.array(self.first_decoded)
 
-        all_data = self.all_data[:self.bits]
+        all_data = self.all_data
         self.times += 1
         if self.times == 5:
             return all_data
@@ -464,6 +521,7 @@ class receiver(audio_modem):
         data = np.reshape(data, len(data))
 
         null_character = [0, 0, 0, 0, 0, 0, 0, 0]
+        null_character = np.array(null_character)
 
         num_nulls = 0
         name_start = 0
@@ -472,19 +530,22 @@ class receiver(audio_modem):
         header = []
         restofdata = []
         for i in range(0, len(data), 8):
-            if (data[i:i+8] == null_character):
+            if ((data[i:i+8] == null_character).all()):
+                print(i)
                 num_nulls += 1
-            if num_nulls == 2:
-                name_start = i+8
-            if num_nulls == 3:
-                name.extend(data[name_start:i])
-            if num_nulls == 4:
-                header_start = i+8
-            if num_nulls == 5:
-                header.extend(data[header_start:i])
-            if num_nulls == 6:
-                restofdata.extend(data[i+8:])
-                break
+                if num_nulls == 2:
+                    name_start = i+8
+                if num_nulls == 3:
+                    name.extend(data[name_start:i])
+                if num_nulls == 4:
+                    header_start = i+8
+                if num_nulls == 5:
+                    header.extend(data[header_start:i])
+                if num_nulls == 6:
+                    restofdata.extend(data[i+8:])
+                    break
+        #print("Name: ", name)
+        #print("Header: ", header)
         file_name = self.decode_text(name)
         bits = self.decode_text(header)
 
@@ -505,11 +566,32 @@ class receiver(audio_modem):
 
         return ''.join([chr(i) for i in ascii])
     
+    def save_decoded_file(self, data_arr, size):
+        data = ''.join(data_arr)
+        byte = int(data, 2).to_bytes(size, 'big')
+        print(len(data))
+        output = open(self.file_name, "wb")
+        output.write(byte)
+        output.close()
+
     def start(self):
         self.listen()
         start_index, cross_correlation, lags = self.find_start_index(self.entire_data)
+        #end_index, cross_correlation, lags = self.find_end_index(self.entire_data)
+        #end_index = end_index - self.ofdm_prefix_size
         data_index = self.find_data_index(self.entire_data, start_index)
-        return self.data_block_processing()
+        #data_length = end_index - data_index
+        #num_blocks = data_length // (self.ofdm_symbol_size + self.ofdm_prefix_size) + data_length % (self.ofdm_symbol_size + self.ofdm_prefix_size)
+        #self.bits = num_blocks * self.c.K
+        #print("num_blocks: ", num_blocks)
+        self.bits = 30704
+        print("bits: ", self.bits)
+        data = self.data_block_processing()
+        print("Data: ", data[0:100])
+        all_data = self.extract_header(data)
+        #all_data = all_data[:self.bits]
+        #self.save_decoded_file(all_data, self.bits)
+        return all_data
 
 def success(a, b):
     """find the percentage difference between two lists"""
