@@ -39,7 +39,7 @@ class receiver(audio_modem):
         x = self.chirp
         cross_correlation = []
         plot_data = data
-        data = data[:200000]
+        data = data[:300000]
         print(len(data))
         n = len(x)
         N = len(data)
@@ -66,10 +66,10 @@ class receiver(audio_modem):
     def find_end_index(self, data):
         # Find Chirp End
         # x and y are the time signals to be compared
-        x = self.chirp_p_s
+        x = self.chirp
         cross_correlation = []
         plot_data = data
-        data = data[300000:]
+        data = data[350000:]
         print(len(data))
         n = len(x)
         N = len(data)
@@ -85,7 +85,7 @@ class receiver(audio_modem):
         self.chirp_start = lags[max_index]
         positions = np.arange(0, len(data))
         
-        return lags[max_index] + 300000, cross_correlation, lags
+        return lags[max_index] + 350000, cross_correlation, lags
     
     def channel_estimation(self, block, ideal_block):
         # Find Channel Response
@@ -386,7 +386,7 @@ class receiver(audio_modem):
         index = 1
         if five_blocks == False:
             ofdm_freq = np.fft.fft(ofdm_block_one)
-            self.sigma2 = self.calculate_sigma2_one_block(np.fft.fft(ofdm_block_one)) / 2
+            self.sigma2 = 2
             ofdm_freq = ofdm_freq / channel_freq
             ofdm_freq = ofdm_freq[1:2048]
             corrected = self.combined_correction(ofdm_freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
@@ -458,10 +458,10 @@ class receiver(audio_modem):
         
         self.corrected = np.array(self.corrected)
         self.first_decoded = np.array(self.first_decoded)
-        return self.data_block_processing_part_2()
+        #return self.data_block_processing_part_2()
 
-        #all_data = all_data[:self.bits]
-        #return all_data
+        all_data = all_data[:self.bits]
+        return all_data
     
     def data_block_processing_part_2(self):
         corrected = self.corrected.copy()
@@ -510,7 +510,7 @@ class receiver(audio_modem):
 
         all_data = self.all_data
         self.times += 1
-        if self.times == 5:
+        if self.times == 1:
             return all_data
         else:
             return self.data_block_processing_part_2()
@@ -568,6 +568,7 @@ class receiver(audio_modem):
     
     def save_decoded_file(self, data_arr, size):
         print(len(data_arr))
+        print(data_arr[:100])
         data = ''.join(str(i) for i in data_arr)
         byte = int(data, 2).to_bytes(size, 'big')
         print(len(data))
@@ -592,11 +593,11 @@ class receiver(audio_modem):
         print("bits: ", self.bits)
         data = self.data_block_processing()
         print("Data: ", data[0:100])
-        all_data = self.extract_header(data)
-        self.bits = int(self.bits)
-        all_data = all_data[:self.bits]
-        self.save_decoded_file(all_data, self.bits)
-        return all_data
+        #all_data = self.extract_header(data)
+        #self.bits = int(self.bits)
+        #all_data = all_data[:self.bits]
+        #self.save_decoded_file(all_data, self.bits)
+        return data
 
 def success(a, b):
     """find the percentage difference between two lists"""
@@ -642,14 +643,14 @@ if __name__ == "__main__":
         elif (ldpc_bits[index], ldpc_bits[index+1]) == (1, 0):
             colors.append('y')
     
-    for index in range(29,41):
+    for index in range(0,10):
         
         """plt.scatter(np.real(r.constellations[648 * index:648 * (index+1)]), np.imag(r.constellations[648 * index:648 * (index+1)]), c=colors[648 * index:648 * (index+1)])
         plt.axhline(0, color='black', lw=0.5)
         plt.axvline(0, color='black', lw=0.5)
         plt.show()"""
 
-        if False:
+        if True:
             plt.scatter(np.real(r.constellations[648 * index:648 * (index+1)]), np.imag(r.constellations[648 * index:648 * (index+1)]), c=colors[648 * index:648 * (index+1)])
             plt.axhline(0, color='black', lw=0.5)
             plt.axvline(0, color='black', lw=0.5)
