@@ -23,10 +23,11 @@ class receiver(audio_modem):
         self.bits = None # Header Information
         self.file_name = None
         self.sigma2 = None
-        self.pre_ldpc_data = []
+        # self.pre_ldpc_data = []
         self.corrected = []
         self.first_decoded = []
-        self.times = 0
+
+        self.iterative_ldpc_weight = 0.6
 
         # Generate Watermark
         self.watermark = self.known_ofdm_block_mod4
@@ -39,14 +40,10 @@ class receiver(audio_modem):
         """ Find Index of Chirp Start. Returns index of data where chirp starts, and the cross_correlation graph """
         alldata = data
 
-        print(len(data))
-
         if position == "start":
             data = data[:300000] # Ensure only capture the first chirp
         elif position == "end":
             data = data[500000:] # Ensure only capture the last chirp
-
-        print(len(data))
 
         cross_correlation = scipy.signal.correlate(data, self.chirp ,mode='full', method='fft')
         cross_correlation = np.array(cross_correlation)
@@ -185,28 +182,12 @@ class receiver(audio_modem):
             centers = kmeans.cluster_centers_
             labels = kmeans.labels_
             complex_centers = centers[:, 0] + 1j * centers[:, 1]
-            #print("Centers: ", complex_centers)
             complex_angles = np.angle(complex_centers)
             inti_angles = np.angle(inti_complex)
-            """distance = complex_centers - inti_complex"""
             angle_diff = complex_angles - inti_angles
             angle = np.array(angle_diff)
-            #print("distance", d)
-            #angle = np.angle(d)
-            #print("angle", angle)
-            """for i in range(len(angle)):
-                if angle[i] < 0:
-                    angle[i] = 2 * np.pi + angle[i]"""
             angle = np.mean(angle) #- np.pi
-            #print("mean angle", angle)
-            """if np.abs(angle) > 0.3:
-                angle = 0"""
-            #print(angle)
             corrected = corrected * np.exp(-1j * angle)
-            """angle = np.mean(angle)
-            if angle < 0:
-                angle = 2 * np.pi + angle
-            corrected = corrected * np.exp(-1j * angle)"""
             past_angle += angle 
         else:
             kmeans = KMeans(n_clusters=4, init=inti ).fit(np.array([np.real(corrected), np.imag(corrected)]).T)
@@ -249,13 +230,6 @@ class receiver(audio_modem):
         self.past_centers = centers
         self.past_angle = past_angle
         self.past_gradient = gradient
-        #print("Gradient: ", grad, "Intercept: ", intercept)
-        #print("Angle: ", past_angle)
-        
-        #print("Gradient 2: ", gradient_2)
-        """plt.plot(positions, gradient_2)
-        plt.show()"""
-        
         return corrected
 
     def ofdm_one_block(self, data_block, sigma2):
@@ -277,7 +251,6 @@ class receiver(audio_modem):
         # Phase correction
         corrected = self.combined_correction(freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
         self.corrected.append(corrected * self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1])
-        self.constellations.extend(corrected)
 
         # Find Closest Constellation Point and LLRs
         decoded = []
@@ -285,34 +258,20 @@ class receiver(audio_modem):
         for index, i in enumerate(corrected):
             decoded.extend(self.constellation_point_to_binary(i))
 
+            # If a point is really far away, it is probably wrong (limits really great LLRs)
+            imag = np.imag(i)
+            if np.abs(np.imag(i)) > 5:
+                imag = 5 * np.sign(imag)
+            real = np.real(i)
+            if np.abs(np.real(i)) > 5:
+                real = 5 * np.sign(real)
+
             # Find LLRs by using distance from axes for soft LDPC decoding:
             # L_1(y) = c_k \times c_k^* y'_i / \sigma ^ 2
-            l1 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * np.imag(i) / sigma2
+            l1 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * imag / sigma2
             # L_2(y) = c_k \times c_k^* y'_r / \sigma ^ 2 ... from Jossy LDPC Paper
-            l2 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * np.real(i) / sigma2
+            l2 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * real / sigma2
 
-            llrs.extend([l1.real, l2.real])
-
-        return decoded, llrs
-
-    def ofdm_one_block_2(self, data_block, sigma2): # TODO Cleanup
-        data_block = np.array(data_block)
-        data_block = np.reshape(data_block, len(data_block))
-
-        assert len(data_block) == self.bin_length
-
-        data_block = data_block / self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1]
-
-        self.corrected.append(data_block * self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1])
-        self.constellations.extend(data_block)
-
-        decoded = []
-        llrs = []
-        for index, i in enumerate(data_block):
-            decoded.extend(self.constellation_point_to_binary(i))
-
-            l1 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * np.imag(i) / sigma2
-            l2 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * np.real(i) / sigma2
             llrs.extend([l1.real, l2.real])
 
         return decoded, llrs
@@ -380,7 +339,7 @@ class receiver(audio_modem):
         # Do initial phase correction for first ofdm block:
         ofdm_freq = np.fft.fft(ofdm_symbols[0])
         self.sigma2 = self.calculate_sigma2_one_block(ofdm_freq) // 2 # initial sigma2 estimate
-        self.sigma2 = 0.5 # TODO Fix sigma2 calculation
+        self.sigma2 = 10 # TODO Fix sigma2 calculation
         print("Initial sigma2 estimate = ", self.sigma2)
         ofdm_freq = ofdm_freq / channel_freq
         corrected = self.combined_correction(ofdm_freq[self.ofdm_bin_min : self.ofdm_bin_max + 1])
@@ -433,71 +392,43 @@ class receiver(audio_modem):
 
         # Decode the OFDM Symbols:
 
-        for index, symbol in enumerate(ofdm_symbols[1:]):
+        for index, symbol in enumerate(ofdm_symbols[1:]): # TODO change for 5 blocks
             assert len(symbol) == self.ofdm_symbol_size
 
-            data_bins, llrs = self.ofdm_one_block(symbol, self.sigma2)
-            self.pre_ldpc_data.extend(data_bins) # For Testing
-            decoded = self.ldpc_decode_one_block(data_bins, llrs)
-            all_data.extend(decoded)
+            print("Decoding symbol no. ", index)
+
+            last_decoded = np.zeros_like(self.all_bins * 2)
+
+            for i in range(50): # limit max iterations
+                # Decode Block
+                data_bins, llrs = self.ofdm_one_block(symbol, self.sigma2)
+                # self.pre_ldpc_data.extend(data_bins) # For Testing
+                decoded = self.ldpc_decode_one_block(data_bins, llrs)
+
+                constellation = self.binary_to_constellation_point(self.first_decoded[-1])
+
+                # Iterative LDPC: update channel coefficients
+                self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1] = self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1] * self.iterative_ldpc_weight + (1-self.iterative_ldpc_weight) * self.corrected[-1] / constellation
+
+                decoded = np.array(decoded)
+                last_decoded = np.array(last_decoded)
+
+                if (last_decoded == decoded).all(): # Detect if iterative LDPC changed anything?
+                    break
+                
+                if i == 49:
+                    print("Broken because of max iterations")
+
+                last_decoded = decoded 
+            
+            self.constellations.extend(self.corrected[-1] / self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1])
+            all_data.extend(last_decoded)
         
         self.corrected = np.array(self.corrected)
         # return self.data_block_processing_part_2()
 
         all_data = all_data[:self.bits]
         return all_data
-    
-    def data_block_processing_part_2(self): #TODO Cleanup
-        corrected = self.corrected.copy()
-        first_decoded = self.first_decoded.copy()
-        first_decoded_constellations = []
-
-        for i in first_decoded:
-            first_decoded_constellations.append(self.binary_to_constellation_point(i))
-        
-        first_decoded_constellations = np.array(first_decoded_constellations)
-
-        temp_channels = []
-        for index, i in enumerate(corrected):
-            #print(index, i.shape, first_decoded_constellations[index].shape)
-            temp_channels.append(i / first_decoded_constellations[index])
-        
-        temp_channels = np.array(temp_channels)
-
-        mean = np.mean(temp_channels, axis=0)
-
-        plt.plot(np.abs(self.channel_freq))
-
-        self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1] = mean
-
-        plt.plot(np.abs(self.channel_freq), color='r')
-        plt.show()
-
-        self.sigma2 = self.calculate_sigma2(corrected, first_decoded_constellations)
-
-        self.pre_ldpc_data = []
-        self.corrected = []
-        self.first_decoded = []
-        self.all_data = []
-        self.constellations = []
-        
-        for index, i in enumerate(corrected):
-            data_bins, llrs = self.ofdm_one_block_2(i, self.sigma2)
-            self.pre_ldpc_data.extend(data_bins)
-
-            decoded = self.ldpc_decode_one_block(data_bins, llrs)
-
-            self.all_data.extend(decoded)
-
-        self.corrected = np.array(self.corrected)
-        self.first_decoded = np.array(self.first_decoded)
-
-        all_data = self.all_data
-        self.times += 1
-        if self.times == 6:
-            return all_data
-        else:
-            return self.data_block_processing_part_2()
      
     def extract_header(self, data):
         """ Takes data as a list of bits, and returns the list of bits without the header. Sets header info to object data """
@@ -574,8 +505,8 @@ from transmitter import transmitter
 if __name__ == "__main__":
     r = receiver()
 
-    # entire_data = np.loadtxt('data/haoran_testing23.csv', delimiter = ",", dtype = "float")
-    entire_data = r.read_wav("data/recording_63.wav")
+    # entire_data = np.loadtxt('data/haoran_testing1.csv', delimiter = ",", dtype = "float")
+    entire_data = r.read_wav("data/recording_62.wav")
 
     ### FIND CROSS CORRELATIONS (start and end chirps)
 
@@ -603,8 +534,8 @@ if __name__ == "__main__":
 
     data = r.data_block_processing(data_block)
 
-    # print("Data: ", data[0:100])
-    # print(r.decode_text(data))
+    print("Data: ", data[0:100])
+    print(r.decode_text(data)[0:100])
 
     data_without_header = r.extract_header(data)
     r.save_decoded_file(data_without_header, r.bits)
@@ -615,7 +546,7 @@ if __name__ == "__main__":
     binary_data_with_header = t.add_header(transmitted_bits)
     ldpc_bits = t.ldpc_encode(binary_data_with_header) # Data from transmitter before LDPC encoding
 
-    ldpc_bits_r = r.pre_ldpc_data # Data from receiver before LDPC decoding
+    # ldpc_bits_r = r.pre_ldpc_data # Data from receiver before LDPC decoding
 
     colors = []
 
@@ -641,8 +572,8 @@ if __name__ == "__main__":
 
         plt.show()
 
-        # print("---- OFDM Block Number ---- = ", index)
+        print("---- OFDM Block Number ---- = ", index)
         # print("Pre-LDPC Success", success(ldpc_bits[index*648*2:(index+1)*648*2], ldpc_bits_r[index*648*2:(index+1)*648*2]))
-        # print("Post-LDPC Success", success(binary_data_with_header[index*648:(index+1)*648], data[index*648:(index+1)*648]))
+        print("Post-LDPC Success", success(binary_data_with_header[index*648:(index+1)*648], data[index*648:(index+1)*648]))
 
 
