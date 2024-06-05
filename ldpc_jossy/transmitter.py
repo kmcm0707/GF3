@@ -137,6 +137,10 @@ class transmitter(audio_modem):
 
     def transmit(self, filename, playsound=True):
         binary_data = self.process_file(filename)
+        #print("Binary Data Length:", len(binary_data))
+        null_character = np.zeros(8).astype(int)
+        bits = np.unpackbits(np.frombuffer(b"30712", dtype=np.uint8))
+        filename = np.unpackbits(np.frombuffer(b"bee.txt", dtype=np.uint8))
         coded_binary_data = self.ldpc_encode(binary_data)
         to_transmit = self.ofdm(coded_binary_data)
         chirp_p_s = self.generate_chirp_p_s() * 0.1
@@ -151,5 +155,5 @@ class transmitter(audio_modem):
 
 if __name__ == "__main__":
     t = transmitter()
-    t.transmit("ldpc_jossy\max_test_in.txt")
+    t.transmit("max_test_in.txt")
 

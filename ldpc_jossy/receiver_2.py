@@ -577,20 +577,20 @@ class receiver(audio_modem):
     def start(self):
         self.listen()
         start_index, cross_correlation, lags = self.find_start_index(self.entire_data)
-        #end_index, cross_correlation, lags = self.find_end_index(self.entire_data)
-        #end_index = end_index - self.ofdm_prefix_size
+        end_index, cross_correlation, lags = self.find_end_index(self.entire_data)
+        end_index = end_index - self.ofdm_prefix_size
         data_index = self.find_data_index(self.entire_data, start_index)
-        #data_length = end_index - data_index
-        #num_blocks = data_length // (self.ofdm_symbol_size + self.ofdm_prefix_size) + data_length % (self.ofdm_symbol_size + self.ofdm_prefix_size)
-        #self.bits = num_blocks * self.c.K
-        #print("num_blocks: ", num_blocks)
+        data_length = end_index - data_index
+        num_blocks = data_length // (self.ofdm_symbol_size + self.ofdm_prefix_size) + data_length % (self.ofdm_symbol_size + self.ofdm_prefix_size)
+        self.bits = num_blocks * self.c.K
+        print("num_blocks: ", num_blocks)
         self.bits = 30704
         print("bits: ", self.bits)
         data = self.data_block_processing()
         print("Data: ", data[0:100])
         all_data = self.extract_header(data)
-        #all_data = all_data[:self.bits]
-        #self.save_decoded_file(all_data, self.bits)
+        all_data = all_data[:self.bits]
+        self.save_decoded_file(all_data, self.bits)
         return all_data
 
 def success(a, b):
