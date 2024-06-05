@@ -157,5 +157,5 @@ class transmitter(audio_modem):
 
 if __name__ == "__main__":
     t = transmitter()
-    print(t.transmit("data/hamlet_in.txt", False))
+    print(t.transmit("data/hamlet_in.txt", True))
 
