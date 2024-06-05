@@ -39,10 +39,14 @@ class receiver(audio_modem):
         """ Find Index of Chirp Start. Returns index of data where chirp starts, and the cross_correlation graph """
         alldata = data
 
+        print(len(data))
+
         if position == "start":
             data = data[:300000] # Ensure only capture the first chirp
         elif position == "end":
-            data = data[700000:] # Ensure only capture the last chirp
+            data = data[500000:] # Ensure only capture the last chirp
+
+        print(len(data))
 
         cross_correlation = scipy.signal.correlate(data, self.chirp ,mode='full', method='fft')
         cross_correlation = np.array(cross_correlation)
@@ -60,12 +64,12 @@ class receiver(audio_modem):
         elif position == "end":
             chirp_start = len(alldata) - N + np.arange(-n + 1, N)[max_index]
 
-        #Plot the data with a colour coded chirp
-        # positions = np.arange(0, len(alldata))
-        # plt.plot(positions[:chirp_start - 1024], alldata[:chirp_start - 1024])
-        # plt.plot(positions[chirp_start - 1024 : chirp_start + len(self.chirp_p_s) - 1024], alldata[chirp_start - 1024 : chirp_start+len(self.chirp_p_s) - 1024], color='r')
-        # plt.plot(positions[chirp_start + len(self.chirp_p_s) - 1024:], alldata[chirp_start + len(self.chirp_p_s) - 1024:], color='g')
-        # plt.show()
+        # Plot the data with a colour coded chirp
+        positions = np.arange(0, len(alldata))
+        plt.plot(positions[:chirp_start - 1024], alldata[:chirp_start - 1024])
+        plt.plot(positions[chirp_start - 1024 : chirp_start + len(self.chirp_p_s) - 1024], alldata[chirp_start - 1024 : chirp_start+len(self.chirp_p_s) - 1024], color='r')
+        plt.plot(positions[chirp_start + len(self.chirp_p_s) - 1024:], alldata[chirp_start + len(self.chirp_p_s) - 1024:], color='g')
+        plt.show()
 
         return chirp_start, cross_correlation
     
@@ -97,7 +101,7 @@ class receiver(audio_modem):
         self.data_index = start_index + len(self.chirp_p_s) - self.ofdm_prefix_size
         return self.data_index
     
-    def calculate_sigma2_five_block(self, recieved, ideal): # TODO Cleanup - not used
+    def calculate_sigma2_five_block(self, recieved, ideal): # TODO Cleanup
         ideal = ideal * self.channel_freq
         ideal = np.concatenate(ideal)
         recieved = np.concatenate(recieved)
@@ -113,7 +117,7 @@ class receiver(audio_modem):
         print("second guess sigma2", sigma2) # Should be ~ 0.1 ish for ideal channel?
         return sigma2
 
-    def calculate_sigma2(self, recieved, ideal): # TODO Cleanup - not used
+    def calculate_sigma2(self, recieved, ideal): # TODO Cleanup
         # TODO: CHECK WITH MAX CORRECT
         # Calculate Noise Power
         # sigma2 = 1/N * \sum_{k=1}^{N} |Y_k - H_kX_k|^2
@@ -291,7 +295,7 @@ class receiver(audio_modem):
 
         return decoded, llrs
 
-    def ofdm_one_block_2(self, data_block, sigma2): # TODO Cleanup - not used
+    def ofdm_one_block_2(self, data_block, sigma2): # TODO Cleanup
         data_block = np.array(data_block)
         data_block = np.reshape(data_block, len(data_block))
 
@@ -399,7 +403,7 @@ class receiver(audio_modem):
             channel_freq = (channel_freq + channel_freq_2 + channel_freq_3 + channel_freq_4 + channel_freq_5) / 5
             self.channel_freq = channel_freq
 
-            ofdm_freq_1 = np.fft.fft(ofdm_block_one)
+            ofdm_freq_1 = np.fft.fft(ofdm_symbols[0])
             ofdm_freq_2 = np.fft.fft(ofdm_block_two)
             ofdm_freq_3 = np.fft.fft(ofdm_block_three)
             ofdm_freq_4 = np.fft.fft(ofdm_block_four)
@@ -438,12 +442,12 @@ class receiver(audio_modem):
             all_data.extend(decoded)
         
         self.corrected = np.array(self.corrected)
-        #return self.data_block_processing_part_2()
+        # return self.data_block_processing_part_2()
 
         all_data = all_data[:self.bits]
         return all_data
     
-    def data_block_processing_part_2(self): #TODO Cleanup - not used
+    def data_block_processing_part_2(self): #TODO Cleanup
         corrected = self.corrected.copy()
         first_decoded = self.first_decoded.copy()
         first_decoded_constellations = []
@@ -490,7 +494,7 @@ class receiver(audio_modem):
 
         all_data = self.all_data
         self.times += 1
-        if self.times == 1:
+        if self.times == 6:
             return all_data
         else:
             return self.data_block_processing_part_2()
@@ -544,10 +548,15 @@ class receiver(audio_modem):
     def save_decoded_file(self, data_arr, size):
         """ saves (binary) data to self.file_name """
         data = ''.join(str(i) for i in data_arr)
-        byte = int(data, 2).to_bytes(size, 'big')
+        byte = int(data, 2).to_bytes(len(data) // 8, byteorder='big')
         output = open("outputs/" + self.file_name, "wb")
         output.write(byte)
         output.close()
+
+    def read_wav(self, filename):
+        samplerate, data = scipy.io.wavfile.read(filename)
+        print("Sample rate (wav) = ", samplerate)
+        return data
 
 def success(a, b):
     """find the percentage difference between two lists"""
@@ -565,7 +574,8 @@ from transmitter import transmitter
 if __name__ == "__main__":
     r = receiver()
 
-    entire_data = np.loadtxt('../malachy_testing4.csv', delimiter = ",", dtype = "float")
+    # entire_data = np.loadtxt('data/haoran_testing23.csv', delimiter = ",", dtype = "float")
+    entire_data = r.read_wav("data/recording_63.wav")
 
     ### FIND CROSS CORRELATIONS (start and end chirps)
 
@@ -597,7 +607,7 @@ if __name__ == "__main__":
     # print(r.decode_text(data))
 
     data_without_header = r.extract_header(data)
-    # r.save_decoded_file(data_without_header, r.bits)
+    r.save_decoded_file(data_without_header, r.bits)
 
     t =  transmitter()
 
@@ -619,9 +629,7 @@ if __name__ == "__main__":
         elif (ldpc_bits[index], ldpc_bits[index+1]) == (1, 0):
             colors.append('y')
 
-    index = 2
-
-    for index in range(23, 29, 1): # Iterate through the OFDM Symbols
+    for index in [0, 10, 50]: # Iterate through the OFDM Symbols
         plt.scatter(np.real(r.constellations[648 * index:648 * (index+1)]), np.imag(r.constellations[648 * index:648 * (index+1)]), c=colors[648 * index:648 * (index+1)])
         plt.axhline(0, color='black', lw=0.5)
         plt.axvline(0, color='black', lw=0.5)
@@ -631,11 +639,10 @@ if __name__ == "__main__":
         ax.set_xlim([-2, 2])
         ax.set_ylim([-2, 2])
 
-
         plt.show()
 
-        print("---- OFDM Block Number ---- = ", index)
-        print("Pre-LDPC Success", success(ldpc_bits[index*648*2:(index+1)*648*2], ldpc_bits_r[index*648*2:(index+1)*648*2]))
-        print("Post-LDPC Success", success(binary_data_with_header[index*648:(index+1)*648], data[index*648:(index+1)*648]))
+        # print("---- OFDM Block Number ---- = ", index)
+        # print("Pre-LDPC Success", success(ldpc_bits[index*648*2:(index+1)*648*2], ldpc_bits_r[index*648*2:(index+1)*648*2]))
+        # print("Post-LDPC Success", success(binary_data_with_header[index*648:(index+1)*648], data[index*648:(index+1)*648]))
 
 
