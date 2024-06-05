@@ -586,7 +586,7 @@ class receiver(audio_modem):
         return restofdata
 
     def listen(self):
-        self.entire_data = np.loadtxt('../malachy_testing4.csv', delimiter = ",", dtype = "float")
+        self.entire_data = np.loadtxt('../malachy_testing.csv', delimiter = ",", dtype = "float")
         
     def decode_text(self, binary_data):
         binary_data = np.array(binary_data).astype("str")
@@ -599,9 +599,9 @@ class receiver(audio_modem):
         print(len(data_arr))
         print(data_arr[:100])
         data = ''.join(str(i) for i in data_arr)
-        byte = int(data, 2).to_bytes(size, 'big')
+        byte = int(data, 2).to_bytes(len(data) // 8, 'big')
         print(len(data))
-        output = open(self.file_name, "wb")
+        output = open(self.file_name + '2', "wb")
         output.write(byte)
         output.close()
 
