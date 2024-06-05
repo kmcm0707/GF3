@@ -140,7 +140,8 @@ class transmitter(audio_modem):
         #print("Binary Data Length:", len(binary_data))
         null_character = np.zeros(8).astype(int)
         bits = np.unpackbits(np.frombuffer(b"30712", dtype=np.uint8))
-        filename = np.unpackbits(np.frombuffer(b"bee.txt", dtype=np.uint8))
+        file_name = np.unpackbits(np.frombuffer(b"bee.txt", dtype=np.uint8))
+        binary_data = np.concatenate((null_character, null_character, file_name, null_character, null_character, binary_data))
         coded_binary_data = self.ldpc_encode(binary_data)
         to_transmit = self.ofdm(coded_binary_data)
         chirp_p_s = self.generate_chirp_p_s() * 0.1
