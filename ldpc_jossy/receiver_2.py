@@ -372,7 +372,7 @@ class receiver(audio_modem):
 
     def data_block_processing(self, five_blocks = False):
         all_data = []
-        actual_data = self.entire_data[self.data_index:]
+        actual_data = self.entire_data
         ofdm_block_one = actual_data[:self.ofdm_symbol_size+self.ofdm_prefix_size]
         ofdm_block_one = ofdm_block_one[self.ofdm_prefix_size:]
         self.pre_ldpc_data = []
@@ -444,7 +444,7 @@ class receiver(audio_modem):
             ofdm_block = ofdm_block[self.ofdm_prefix_size:]
 
             #sigma2 = self.calculate_sigma2_one_block(ofdm_block)
-
+            #print(len(ofdm_block))
             assert len(ofdm_block) == self.ofdm_symbol_size
 
             data_bins, llrs = self.ofdm_one_block(ofdm_block, self.sigma2)
@@ -567,7 +567,8 @@ class receiver(audio_modem):
         return ''.join([chr(i) for i in ascii])
     
     def save_decoded_file(self, data_arr, size):
-        data = ''.join(data_arr)
+        print(len(data_arr))
+        data = ''.join(str(i) for i in data_arr)
         byte = int(data, 2).to_bytes(size, 'big')
         print(len(data))
         output = open(self.file_name, "wb")
@@ -576,19 +577,23 @@ class receiver(audio_modem):
 
     def start(self):
         self.listen()
+        print(self.entire_data.shape)
         start_index, cross_correlation, lags = self.find_start_index(self.entire_data)
         end_index, cross_correlation, lags = self.find_end_index(self.entire_data)
         end_index = end_index - self.ofdm_prefix_size
         data_index = self.find_data_index(self.entire_data, start_index)
         data_length = end_index - data_index
-        num_blocks = data_length // (self.ofdm_symbol_size + self.ofdm_prefix_size) + data_length % (self.ofdm_symbol_size + self.ofdm_prefix_size)
-        self.bits = num_blocks * self.c.K
+        print("Data Index: ", data_length)
+        num_blocks = int(np.ceil(data_length / (self.ofdm_symbol_size + self.ofdm_prefix_size)))
+        self.entire_data = self.entire_data[data_index:int(data_index + (num_blocks+1) * (self.ofdm_symbol_size + self.ofdm_prefix_size) + 1)]
+        self.bits = int(num_blocks * self.c.K)
         print("num_blocks: ", num_blocks)
-        self.bits = 30704
+        #self.bits = 30704
         print("bits: ", self.bits)
         data = self.data_block_processing()
         print("Data: ", data[0:100])
         all_data = self.extract_header(data)
+        self.bits = int(self.bits)
         all_data = all_data[:self.bits]
         self.save_decoded_file(all_data, self.bits)
         return all_data
