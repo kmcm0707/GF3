@@ -18,8 +18,8 @@ def reciver(fs, time, save_file = False, file_name = 'recording.wav'):
 
 if __name__ == "__main__":
     fs = 48000
-    time = 30 # seconds
-    recording = reciver(fs, time, save_file = True, file_name = 'malachy_testing2.csv')
+    time = 20 # seconds
+    recording = reciver(fs, time, save_file = True, file_name = 'malachy_testing4.csv')
     print(recording)
     plt.plot(recording)
     plt.show()
