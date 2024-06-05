@@ -28,14 +28,14 @@ class audio_modem:
         self.sampling_frequency = sampling_frequency
         self.ofdm_symbol_size = ofdm_symbol_size
         self.ofdm_prefix_size = ofdm_prefix_size
+
         self.bin_length = ofdm_bin_max - ofdm_bin_min + 1
         self.all_bins = self.ofdm_symbol_size // 2 -1 # 2047
         self.ofdm_bin_min = ofdm_bin_min
         self.ofdm_bin_max = ofdm_bin_max
+
         self.known_ofdm_block_mod4 = self.generate_known_ofdm_block_mod4()
         self.known_ofdm_block = self.generate_known_ofdm_block()
-        
-
         
         self.chirp = self.generate_chirp(chirp_start, chirp_end, chirp_duration)
         self.chirp_p_s = self.generate_chirp_p_s()

@@ -10,8 +10,9 @@ class transmitter(audio_modem):
         audio_modem.__init__(self)
 
 
-    def process_file(self, filename):
-        """open file and return bits"""
+    def process_file(self, filename: str):
+        """open file and return bits as numpy array"""
+
         with open(filename, 'rb') as f:
             bytes=f.read()
         return np.unpackbits(np.frombuffer(bytes, dtype=np.uint8))
@@ -42,6 +43,8 @@ class transmitter(audio_modem):
         return np.array(coded_binary_data).flatten()
 
     def ofdm(self, to_encode):
+        """ofdm encode a block"""
+
         print("OFDM Encoding Length:", len(to_encode))
         split_length = (self.bin_length) * 2
         padding_zeros = []
@@ -103,8 +106,11 @@ class transmitter(audio_modem):
         to_transmit = np.concatenate(to_transmit, axis = 0)
         return to_transmit
     
-    def assemble_all(self, to_transmit, chirp_p_s, known_ofdm_cp_ifft):
-        return np.concatenate((chirp_p_s, known_ofdm_cp_ifft, known_ofdm_cp_ifft, known_ofdm_cp_ifft, known_ofdm_cp_ifft, known_ofdm_cp_ifft, to_transmit, chirp_p_s), axis = None)
+    def assemble_all(self, to_transmit, chirp_p_s, known_ofdm_cp_ifft, mode="five"):
+        if mode == "five":
+            return np.concatenate((chirp_p_s, known_ofdm_cp_ifft, known_ofdm_cp_ifft, known_ofdm_cp_ifft, known_ofdm_cp_ifft, known_ofdm_cp_ifft, to_transmit, chirp_p_s), axis = None)
+        elif mode == "one":
+            return np.concatenate((chirp_p_s, known_ofdm_cp_ifft, to_transmit, chirp_p_s), axis = None)
     
     def play_sound(self, samples):
         p = pyaudio.PyAudio()
@@ -130,14 +136,11 @@ class transmitter(audio_modem):
 
     def transmit(self, filename, playsound=True):
         binary_data = self.process_file(filename)
-        #print("Binary Data Length:", len(binary_data))
-        null_character = np.zeros(8).astype(int)
-        bits = np.unpackbits(np.frombuffer(b"30712", dtype=np.uint8))
-        file_name = np.unpackbits(np.frombuffer(b"bee.txt", dtype=np.uint8))
-        binary_data = np.concatenate((null_character, null_character, file_name, null_character, null_character, binary_data))
-        coded_binary_data = self.ldpc_encode(binary_data)
+        binary_data_with_header = self.add_header(binary_data)
+        print(len(binary_data_with_header))
+        coded_binary_data = self.ldpc_encode(binary_data_with_header)
         to_transmit = self.ofdm(coded_binary_data)
-        chirp_p_s = self.generate_chirp_p_s() * 0.1
+        chirp_p_s = self.chirp_p_s * 0.1
         print(len(chirp_p_s))
         known_ofdm_cp_ifft = self.generate_known_ofdm_block_cp_ifft()
         to_transmit = self.assemble_all(to_transmit, chirp_p_s, known_ofdm_cp_ifft)
@@ -146,6 +149,11 @@ class transmitter(audio_modem):
             self.play_sound(to_transmit)
         return to_transmit
 
+    def add_header(self, binary_data):
+        null_character = np.zeros(8).astype(int)
+        bits = np.unpackbits(np.frombuffer(b"56840", dtype=np.uint8))
+        file_name = np.unpackbits(np.frombuffer(b"hamlet.txt", dtype=np.uint8))
+        return np.concatenate((null_character, null_character, file_name, null_character, null_character, bits, null_character, null_character, binary_data))
 
 if __name__ == "__main__":
     t = transmitter()
