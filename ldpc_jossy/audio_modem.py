@@ -92,10 +92,8 @@ class audio_modem:
     def generate_chirp_p_s(self):
         """Add a prefix and suffix to the chirp signal"""
         prefix = self.chirp[-self.ofdm_prefix_size:]
-        print("Chirp_p_s Prefix Length:", len(prefix))
         suffix = self.chirp[:self.ofdm_prefix_size]
-        print("Chirp_p_s Suffix Length:", len(suffix))
-        print("Chirp_p_s Length:", len(np.concatenate((prefix, self.chirp, suffix))))
+
         return np.concatenate((prefix, self.chirp, suffix))
     
     def mod4_to_gray(self, mod4):
@@ -131,9 +129,8 @@ class audio_modem:
     
     def binary_to_constellation_point(self, binary_symbol):
         """Converts a binary symbol to a constellation point"""
-        #print(binary_symbol)
         mod4_symbol = self.binary_symbol_to_mod4(binary_symbol)
-        #print("Mod4 Symbol:", len(mod4_symbol))
+
         constellation_point = np.zeros(len(mod4_symbol)).astype('complex')
         for i in range(len(mod4_symbol)):
             constellation_point[i] = self.mod4_to_gray(mod4_symbol[i])

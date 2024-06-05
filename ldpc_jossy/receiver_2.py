@@ -40,14 +40,14 @@ class receiver(audio_modem):
         cross_correlation = []
         plot_data = data
         data = data[:300000]
-        print(len(data))
+
         n = len(x)
         N = len(data)
         lags = np.arange(-n + 1, N) 
         cross_correlation.append(scipy.signal.correlate(data, x,mode='full', method='fft'))
         cross_correlation = np.array(cross_correlation)
         cross_correlation = np.reshape(cross_correlation, cross_correlation.shape[1])
-        print(cross_correlation.shape)
+
         #plt.plot(cross_correlation)
         #plt.show()
         cross_correlation = np.abs(cross_correlation)
@@ -70,7 +70,7 @@ class receiver(audio_modem):
         cross_correlation = []
         plot_data = data
         data = data[350000:]
-        print(len(data))
+
         n = len(x)
         N = len(data)
         lags = np.arange(-n + 1, N) 
@@ -82,8 +82,6 @@ class receiver(audio_modem):
         cross_correlation = uniform_filter1d(cross_correlation, size=5)
 
         max_index = np.argmax(cross_correlation)
-        self.chirp_start = lags[max_index]
-        positions = np.arange(0, len(data))
         
         return lags[max_index] + 350000, cross_correlation, lags
     
@@ -113,14 +111,15 @@ class receiver(audio_modem):
     
     def calculate_sigma2_five_block(self, recieved, ideal):
         ideal = ideal * self.channel_freq
-        ideal = np.concatenate(ideal)
-        recieved = np.concatenate(recieved)
+        recieved = np.array(recieved)
+        ideal = np.array(ideal)
+        ideal = ideal[:,self.ofdm_bin_min:self.ofdm_bin_max+1]
         real_square_error = (recieved.real - ideal.real) ** 2
         real_square_error = real_square_error.astype(np.float32)
-        # print(real_square_error)
+
         imag_square_error = (recieved.imag - ideal.imag) ** 2
         imag_square_error = imag_square_error.astype(np.float32)
-        # print(imag_square_error)
+
         all_errors = np.concatenate((real_square_error, imag_square_error))
 
         sigma2 = np.mean(all_errors)
@@ -140,10 +139,8 @@ class receiver(audio_modem):
         recieved = np.concatenate(recieved)
         real_square_error = (recieved.real - ideal.real) ** 2
         real_square_error = real_square_error.astype(np.float32)
-        # print(real_square_error)
         imag_square_error = (recieved.imag - ideal.imag) ** 2
         imag_square_error = imag_square_error.astype(np.float32)
-        # print(imag_square_error)
         all_errors = np.concatenate((real_square_error, imag_square_error))
 
         sigma2 = np.mean(all_errors)
@@ -165,7 +162,7 @@ class receiver(audio_modem):
 
         real_square_error = (recieved.real - dec.real) ** 2
         real_square_error = real_square_error.astype(np.float32)
-        # print(real_square_error)
+
         imag_square_error = (recieved.imag - dec.imag) ** 2
         imag_square_error = imag_square_error.astype(np.float32)
 
@@ -199,28 +196,17 @@ class receiver(audio_modem):
             centers = kmeans.cluster_centers_
             labels = kmeans.labels_
             complex_centers = centers[:, 0] + 1j * centers[:, 1]
-            #print("Centers: ", complex_centers)
+
             complex_angles = np.angle(complex_centers)
             inti_angles = np.angle(inti_complex)
             """distance = complex_centers - inti_complex"""
             angle_diff = complex_angles - inti_angles
             angle = np.array(angle_diff)
-            #print("distance", d)
-            #angle = np.angle(d)
-            #print("angle", angle)
-            """for i in range(len(angle)):
-                if angle[i] < 0:
-                    angle[i] = 2 * np.pi + angle[i]"""
+ 
             angle = np.mean(angle) #- np.pi
-            #print("mean angle", angle)
-            """if np.abs(angle) > 0.3:
-                angle = 0"""
-            #print(angle)
+
             corrected = corrected * np.exp(-1j * angle)
-            """angle = np.mean(angle)
-            if angle < 0:
-                angle = 2 * np.pi + angle
-            corrected = corrected * np.exp(-1j * angle)"""
+
             past_angle += angle 
         else:
             kmeans = KMeans(n_clusters=4, init=inti ).fit(np.array([np.real(corrected), np.imag(corrected)]).T)
@@ -237,7 +223,6 @@ class receiver(audio_modem):
         known_angles = np.unwrap(known_angles)
         diff = known_angles - predicted_ideal_angle
         diff = np.unwrap(diff)
-
 
         for index, i in enumerate(diff):
             if i > np.pi + 1:
@@ -263,13 +248,6 @@ class receiver(audio_modem):
         self.past_centers = centers
         self.past_angle = past_angle
         self.past_gradient = gradient
-        #print("Gradient: ", grad, "Intercept: ", intercept)
-        #print("Angle: ", past_angle)
-        
-        #print("Gradient 2: ", gradient_2)
-        """plt.plot(positions, gradient_2)
-        plt.show()"""
-        
         return corrected
 
     def ofdm_one_block(self, data_block, sigma2):
@@ -288,13 +266,11 @@ class receiver(audio_modem):
         # Remove Watermark
         watermark = self.generate_known_ofdm_block_mod4()
         watermark = watermark
-        # print("Watermark: ", watermark[0:5])
 
         # Rotate Watermark
         freq = freq * np.exp(-1j * watermark * np.pi / 2)
         corrected = freq
         corrected = self.combined_correction(freq[self.ofdm_bin_min-1:self.ofdm_bin_max])
-        corrected = corrected
         self.corrected.append(corrected * self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1])
 
         self.constellations.extend(corrected)
@@ -306,9 +282,15 @@ class receiver(audio_modem):
 
             # Find LLRs by using distance from axes for soft LDPC decoding:
             # L_1(y) = c_k \times c_k^* y'_i / \sigma ^ 2
-            l1 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * np.imag(i) / sigma2
+            imag = np.imag(i)
+            if np.abs(imag) > 5:
+                imag = 5 * np.sign(imag)
+            real = np.real(i)
+            if np.abs(real) > 5:
+                real = 5 * np.sign(real)
+            l1 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * imag / sigma2
             # L_2(y) = c_k \times c_k^* y'_r / \sigma ^ 2 ... from Jossy LDPC Paper
-            l2 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * np.real(i) / sigma2
+            l2 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * real / sigma2
             llrs.extend([l1.real, l2.real])
 
         return decoded, llrs
@@ -320,22 +302,29 @@ class receiver(audio_modem):
         assert len(data_block) == self.bin_length
 
         data_block = data_block / self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1]
+        
+        corrected = self.combined_correction(data_block)
 
-        self.corrected.append(data_block * self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1])
         self.constellations.extend(data_block)
 
         decoded = []
         llrs = []
-        for index, i in enumerate(data_block):
+        for index, i in enumerate(corrected):
             decoded.extend(self.constellation_point_to_binary(i))
 
-            l1 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * np.imag(i) / sigma2
-            l2 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * np.real(i) / sigma2
+            imag = np.imag(i)
+            if np.abs(imag) > 5:
+                imag = 5 * np.sign(imag)
+            real = np.real(i)
+            if np.abs(real) > 5:
+                real = 5 * np.sign(real)
+
+            l1 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * imag / sigma2
+            l2 = self.channel_freq[index + self.ofdm_bin_min] * np.conj(self.channel_freq[index + self.ofdm_bin_min]) * real / sigma2
             llrs.extend([l1.real, l2.real])
+        return decoded, llrs, corrected * self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1]
 
-        return decoded, llrs
-
-    def ldpc_decode_one_block(self, to_decode, llrs, mode="soft"):
+    def ldpc_decode_one_block(self, to_decode, llrs, mode="soft", save = True):
         to_decode = np.array(to_decode)
         to_decode = np.reshape(to_decode, len(to_decode))
         llrs = np.array(llrs)
@@ -349,9 +338,10 @@ class receiver(audio_modem):
             decoded_block, iters = self.c.decode(llrs)
             decoded_temp = []
             decoded_temp += ([1 if k < 0 else 0 for k in decoded_block])
-            self.first_decoded.append(decoded_temp)
+            if save == True:
+                self.first_decoded.append(decoded_temp)
 
-            decoded_block = decoded_block[:-(self.c.K)] # No idea what the extra information is
+            decoded_block = decoded_block # No idea what the extra information is
             decoded += ([1 if k < 0 else 0 for k in decoded_block])
 
         elif mode == "hard":
@@ -377,6 +367,7 @@ class receiver(audio_modem):
         assert len(ofdm_block_one) == self.ofdm_symbol_size
 
         channel_freq = self.channel_estimation(np.fft.fft(ofdm_block_one), ideal_block)
+        
         self.channel_freq = channel_freq
 
         index = 1
@@ -400,6 +391,7 @@ class receiver(audio_modem):
             channel_freq_3 = self.channel_estimation(np.fft.fft(ofdm_block_three), ideal_block)
             channel_freq_4 = self.channel_estimation(np.fft.fft(ofdm_block_four), ideal_block)
             channel_freq_5 = self.channel_estimation(np.fft.fft(ofdm_block_five), ideal_block)
+
 
             channel_freq = (channel_freq + channel_freq_2 + channel_freq_3 + channel_freq_4 + channel_freq_5) / 5
             self.channel_freq = channel_freq
@@ -432,36 +424,45 @@ class receiver(audio_modem):
             self.sigma2 = self.calculate_sigma2_five_block([corrected_1, corrected_2, corrected_3, corrected_4, corrected_5], [ideal_block, ideal_block, ideal_block, ideal_block, ideal_block])
             index = 5
 
-        
         while len(all_data) < self.bits:
             #print("\n")
             #print("Index: ", index)
+            last_decoded = np.zeros_like(self.all_bins * 2)
+            changed = True
             ofdm_block = actual_data[index * (self.ofdm_symbol_size + self.ofdm_prefix_size): (index + 1) * (self.ofdm_symbol_size + self.ofdm_prefix_size)]
             ofdm_block = ofdm_block[self.ofdm_prefix_size:]
 
             #sigma2 = self.calculate_sigma2_one_block(ofdm_block)
             #print(len(ofdm_block))
             assert len(ofdm_block) == self.ofdm_symbol_size
+            while changed:
+                data_bins, llrs = self.ofdm_one_block(ofdm_block, self.sigma2)
 
-            data_bins, llrs = self.ofdm_one_block(ofdm_block, self.sigma2)
+                self.pre_ldpc_data.extend(data_bins)
 
-            #self.pre_ldpc_data.extend(data_bins)
+                decoded = self.ldpc_decode_one_block(data_bins, llrs)
 
-            #decoded = self.ldpc_decode_one_block(data_bins, llrs)
+                constellation = self.binary_to_constellation_point(decoded)
 
-            all_data.extend(data_bins[:-(self.c.K)])
+                self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1] = self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1] * 0.8 + 0.2 * self.corrected[-1] / constellation
+                decoded = np.array(decoded)
+                last_decoded = np.array(last_decoded)
+                if (last_decoded == decoded).all():
+                    changed = False
+                last_decoded = decoded
+            all_data.extend(decoded[:-(self.c.K)])
             index += 1
         
         self.corrected = np.array(self.corrected)
         self.first_decoded = np.array(self.first_decoded)
-        #return self.data_block_processing_part_2()
-
-        all_data = all_data[:self.bits]
         return all_data
-    
+        #return self.data_block_processing_part_2()
+   
     def data_block_processing_part_2(self):
         corrected = self.corrected.copy()
+        corrected = corrected.copy()
         first_decoded = self.first_decoded.copy()
+        first_decoded = first_decoded.copy()
         first_decoded_constellations = []
 
         for i in first_decoded:
@@ -473,40 +474,72 @@ class receiver(audio_modem):
         for index, i in enumerate(corrected):
             #print(index, i.shape, first_decoded_constellations[index].shape)
             temp_channels.append(i / first_decoded_constellations[index])
+            if index == 5:
+                break
         
         temp_channels = np.array(temp_channels)
+        
+        #current_channel_estimate = self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1]
 
         mean = np.mean(temp_channels, axis=0)
+       
 
         plt.plot(np.abs(self.channel_freq))
 
-        self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1] = mean
+        #self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1] = 0.5 * (current_channel_estimate + mean)
 
         plt.plot(np.abs(self.channel_freq), color='r')
         plt.show()
 
-        self.sigma2 = self.calculate_sigma2(corrected, first_decoded_constellations)
+        if self.times == 0 :
+            self.sigma2 = self.calculate_sigma2(corrected, first_decoded_constellations)
 
         self.pre_ldpc_data = []
         self.corrected = []
         self.first_decoded = []
         self.all_data = []
         self.constellations = []
+        self.past_centers = []
+        self.past_angle = 0
+        self.past_gradient = 0
+        self.past_change = 0
+
+        
         
         for index, i in enumerate(corrected):
-            data_bins, llrs = self.ofdm_one_block_2(i, self.sigma2)
-            self.pre_ldpc_data.extend(data_bins)
+            attempt = 0
+            last_decoded = first_decoded[index]
+            last_decoded = np.array(last_decoded)
+            check = False
+            c = None
+            while not check:
+                temp_channel = self.corrected[-1] / constellation
+                mean = 0.3 * (temp_channel) + 0.9 * self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1]
+                data_bins, llrs, c = self.ofdm_one_block_2(i, self.sigma2)
 
-            decoded = self.ldpc_decode_one_block(data_bins, llrs)
+                self.pre_ldpc_data.extend(data_bins)
 
-            self.all_data.extend(decoded)
+                decoded = self.ldpc_decode_one_block(data_bins, llrs, save=False)
 
+                constellation = self.binary_to_constellation_point(decoded)
+                
+                self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1] = mean
+                decoded = np.array(decoded)
+                if (last_decoded == decoded).all():
+                    check = True
+                last_decoded = decoded
+                attempt += 1
+
+            self.all_data.extend(decoded[:-(self.c.K)])
+            print("Attempt: ", attempt)
+            self.first_decoded.append(decoded.copy())
+            self.corrected.append(c * self.channel_freq[self.ofdm_bin_min:self.ofdm_bin_max+1])
         self.corrected = np.array(self.corrected)
         self.first_decoded = np.array(self.first_decoded)
 
         all_data = self.all_data
         self.times += 1
-        if self.times == 1:
+        if self.times == 3:
             return all_data
         else:
             return self.data_block_processing_part_2()
@@ -541,8 +574,7 @@ class receiver(audio_modem):
                     restofdata.extend(data[i+8:])
                     print('data start:', i+8)
                     break
-        #print("Name: ", name)
-        #print("Header: ", header)
+
         file_name = self.decode_text(name)
         bits = self.decode_text(header)
 
@@ -575,24 +607,19 @@ class receiver(audio_modem):
 
     def start(self):
         self.listen()
-        #print(self.entire_data.shape)
         start_index, cross_correlation, lags = self.find_start_index(self.entire_data)
         end_index, cross_correlation, lags = self.find_end_index(self.entire_data)
         end_index = end_index - self.ofdm_prefix_size
         data_index = self.find_data_index(self.entire_data, start_index)
         data_length = end_index - data_index
-        #print("Data Index: ", data_length)
-        num_blocks = int(np.ceil(data_length / (self.ofdm_symbol_size + self.ofdm_prefix_size)))
+        num_blocks = int(np.ceil(data_length / (self.ofdm_symbol_size + self.ofdm_prefix_size))) - 1
         self.entire_data = self.entire_data[data_index:int(data_index + (num_blocks+1) * (self.ofdm_symbol_size + self.ofdm_prefix_size) + 1)]
         self.bits = int(num_blocks * self.c.K)
-        #print("num_blocks: ", num_blocks)
-        self.bits = 30704
-        #print("bits: ", self.bits)
+
         data = self.data_block_processing()
-        print("Data: ", data[0:100])
         all_data = self.extract_header(data)
         self.bits = int(self.bits)
-        all_data = all_data
+        all_data = all_data[:self.bits]
         self.save_decoded_file(all_data, self.bits)
         return all_data
 
@@ -614,24 +641,25 @@ if __name__ == "__main__":
     t =  transmitter()
 
     transmitted_bits = t.process_file("hamlet_c.txt")
-    print(transmitted_bits[:100])
+    null_character = np.zeros(8).astype(int)
+    file_name = np.unpackbits(np.frombuffer(b"hamlet.txt", dtype=np.uint8))
+    bits = np.unpackbits(np.frombuffer(b"56840", dtype=np.uint8))
+    transmitted_bits = np.concatenate((null_character,null_character, file_name,null_character, null_character, bits,null_character, null_character, transmitted_bits))
+    print(transmitted_bits[0:16])
+    
     ldpc_bits = t.ldpc_encode(transmitted_bits)
 
     r = receiver()
 
-    # print(r.decode_text([0, 1, 0, 0, 0, 0, 0, 1]))
 
-    r.set_bits_and_file_name(30704,'asdf')
 
     r.listen()
 
     binary_data = r.start()
-    print(transmitted_bits[:100])
-    print(ldpc_bits[:100])
-    print(binary_data[:100])
+
     ldpc_bits_r = r.pre_ldpc_data[168:]
-    print(ldpc_bits_r[:100])
-    print(r.sigma2)
+    ldpc_bits = ldpc_bits[168:]
+    transmitted_bits = transmitted_bits[168:]
 
     
     colors = []
@@ -675,26 +703,14 @@ if __name__ == "__main__":
 
     index = 0
     print(len(ldpc_bits), len(ldpc_bits_r), len(binary_data), len(r.constellations))
-    print('1',success(ldpc_bits[0:100], ldpc_bits_r[0:100]))
-    print('2',success(ldpc_bits[100:200], ldpc_bits_r[100:200]))
-    print('3',success(ldpc_bits[200:300], ldpc_bits_r[200:300]))
-    print('4',success(ldpc_bits[300:400], ldpc_bits_r[300:400]))
-    print('5',success(ldpc_bits[400:500], ldpc_bits_r[400:500]))
-    print('6',success(ldpc_bits[500:600], ldpc_bits_r[500:600]))
-    print('7',success(ldpc_bits[600:700], ldpc_bits_r[600:700]))
-    print('8',success(ldpc_bits[700:800], ldpc_bits_r[700:800]))
-    print('9',success(ldpc_bits[800:900], ldpc_bits_r[800:900]))
-    print('10',success(ldpc_bits[900:1000], ldpc_bits_r[900:1000]))
-    print('11',success(ldpc_bits[1000:1100], ldpc_bits_r[1000:1100]))
-    print('12',success(ldpc_bits[1100:1200], ldpc_bits_r[1100:1200]))
 
-    """for index in range(0, 40):
-        print(success(ldpc_bits[648 * 2 * index:648 * 2 * (index+1)], ldpc_bits_r[648 * 2 * index: 648 * 2 * (index+1)]))"""
+    for index in range(0, 40):
+        print('index:', index, ' success',success(ldpc_bits[648 * 2 * index:648 * 2 * (index+1) - 168], ldpc_bits_r[648 * 2 * index: 648 * 2 * (index+1) - 168]))
 
 
     print("ldpc")
     for index in range(0, 40):
-        print(success(binary_data[648 * index:648 * (index+1)], transmitted_bits[648 * index:648 * (index+1)]))
+        print('index:', index, ' success', success(binary_data[648 * index:648 * (index+1) - 168], transmitted_bits[648 * index:648 * (index+1) - 168]))
 
     print(r.decode_text(binary_data))
 
@@ -709,108 +725,3 @@ if __name__ == "__main__":
     plt.plot(time_freq)
     plt.show()
     
-
-
-### OLD CODE:::
-
-
-    # def ofdm(self, to_decode, sigma2):
-    #     # OLD CODE
-
-    #     decoded_symbols = np.split(to_decode, len(to_decode) / (self.ofdm_prefix_size + self.ofdm_symbol_size))
-
-    #     # Remove Cyclic Prefix
-
-    #     for index, i in enumerate(decoded_symbols):
-    #         decoded_symbols[index] = i[self.ofdm_prefix_size:]
-
-    #     # DFT each symbol:
-
-    #     symbols_freq = np.zeros((len(decoded_symbols), self.ofdm_symbol_size)).astype(complex) # 'empty' array
-
-    #     for index, i in enumerate(decoded_symbols):
-    #         symbols_freq[index] = np.fft.fft(i)
-
-    #     assert symbols_freq.shape[1] == self.ofdm_symbol_size
-
-    #     # Divide by DFT of Channel Response:
-
-    #     recieved_freq = symbols_freq / self.channel_freq
-
-    #     # Remove complex conjugate bins
-    #     constellations = recieved_freq[0][1:2048]
-    #     for index, i in enumerate(recieved_freq[1:]):
-    #         constellations = np.vstack((constellations, i[1:2048]))
-
-    #     self.constellations = constellations # For showing constellation diagrams
-
-    #     decoded_binary = []
-    #     llrs = []
-
-    #     #sigma2 = 1 # Sigma squared - TODO Calculate
-
-    #     # Do Inverse Gray Code:
-
-    #     for symbol in constellations:
-    #         for index, i in enumerate(symbol):
-    #             if np.real(i) >= 0 and np.imag(i) >= 0:
-    #                 decoded_binary.extend([0, 0])
-    #             elif np.real(i) <= 0 and np.imag(i) >= 0:
-    #                 decoded_binary.extend([0, 1])
-    #             elif np.real(i) <= 0 and np.imag(i) <= 0:
-    #                 decoded_binary.extend([1, 1])
-    #             elif np.real(i) >= 0 and np.imag(i) <= 0:
-    #                 decoded_binary.extend([1, 0])
-    #             else:
-    #                 raise Exception("Gray Code Decoding Error")
-                
-    #             # Find LLRs by using distance from axes for soft LDPC decoding:
-
-    #             # L_1(y) = c_k \times c_k^* y'_i / \sigma ^ 2
-
-    #             l1 = self.channel_freq[index] * np.conj(self.channel_freq[index]) * np.imag(i) / sigma2
-
-    #             # L_2(y) = c_k \times c_k^* y'_r / \sigma ^ 2 ... from Jossy LDPC Paper
-
-    #             l2 = self.channel_freq[index] * np.conj(self.channel_freq[index]) * np.real(i) / sigma2
-
-    #             # print("Star = ", i, ". l1, l2 =", (l1, l2))
-    #             llrs.extend([l1.real, l2.real])
-
-    #     decoded_binary = decoded_binary[:-3296] # TODO find OFDM Padding length automatically
-    #     llrs = llrs[:-3296] # TODO find OFDM Padding length automatically
-
-    #     return decoded_binary, llrs
-
-    # def ldpc_decode(self, to_decode, llrs, mode="soft"):
-    #     # OLD CODE
-    #     decoded = []
-
-    #     print("Number of OFDM Blocks: ", len(llrs))
-
-    #     if mode == "soft":
-    #         llrs = np.split(np.array(llrs), len(llrs) // self.c.N)
-
-    #         for i in llrs:
-    #             decoded_block, iters = self.c.decode(i)
-
-    #             # print("Iterations ", iters)
-
-    #             decoded_block = decoded_block[:-(self.c.K)] # No idea what the extra information is
-    #             decoded += ([1 if k < 0 else 0 for k in decoded_block])
-    #     elif mode == "hard":
-    #         to_decode = np.split(np.array(to_decode), len(to_decode) // self.c.N)
-
-    #         for i in to_decode:
-    #             i = 10 * (0.5 - i) # Do weightings
-
-    #             decoded_block, iters = self.c.decode(i)
-
-    #             # print("Iterations ", iters)
-
-    #             decoded_block = decoded_block[:-(self.c.K)] # No idea what the extra information is
-    #             decoded += ([1 if k < 0 else 0 for k in decoded_block])
-    #     else:
-    #         raise Exception("Only 'hard' and 'soft' are valid ldpc decoding modes")
-            
-    #     return decoded[:-392] # TODO find LDPC Padding Length automatically

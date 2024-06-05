@@ -25,13 +25,11 @@ class transmitter(audio_modem):
     
     def ldpc_encode(self, binary_data):
         """binary_data: numpy array of binary data to be encoded"""
-        print("LDPC Encoding Length:", len(binary_data))
         # Pad with zeroes
         padding_zeros = []
         if len(binary_data) % self.c.K != 0:
             padding_zeros = np.zeros(self.c.K - (len(binary_data) % self.c.K))
-        
-        print("LDPC Padding Length:", len(padding_zeros))
+    
 
         if len(padding_zeros) != 0:
             to_ldpc = np.concatenate((binary_data, padding_zeros))
@@ -49,13 +47,11 @@ class transmitter(audio_modem):
         return np.array(coded_binary_data).flatten()
 
     def ofdm(self, to_encode):
-        print("OFDM Encoding Length:", len(to_encode))
         split_length = (self.bin_length) * 2
         padding_zeros = []
         if len(to_encode) % split_length != 0:
             padding_zeros = np.zeros(split_length - (len(to_encode) % split_length))
 
-        print("OFDM Padding Length:", len(padding_zeros))
 
         if len(padding_zeros) != 0:
             to_encode = np.concatenate((to_encode, padding_zeros))
@@ -137,7 +133,6 @@ class transmitter(audio_modem):
 
     def transmit(self, filename, playsound=True):
         binary_data = self.process_file(filename)
-        #print("Binary Data Length:", len(binary_data))
         null_character = np.zeros(8).astype(int)
         bits = np.unpackbits(np.frombuffer(b"30712", dtype=np.uint8))
         file_name = np.unpackbits(np.frombuffer(b"bee.txt", dtype=np.uint8))
@@ -145,10 +140,8 @@ class transmitter(audio_modem):
         coded_binary_data = self.ldpc_encode(binary_data)
         to_transmit = self.ofdm(coded_binary_data)
         chirp_p_s = self.generate_chirp_p_s() * 0.1
-        print(len(chirp_p_s))
         known_ofdm_cp_ifft = self.generate_known_ofdm_block_cp_ifft()
         to_transmit = self.assemble_all(to_transmit, chirp_p_s, known_ofdm_cp_ifft)
-        print(len(to_transmit))
         if playsound:
             self.play_sound(to_transmit)
         return to_transmit
