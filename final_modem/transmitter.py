@@ -134,28 +134,29 @@ class transmitter(audio_modem):
 
         p.terminate()
 
-    def transmit(self, filename, playsound=True):
-        binary_data = self.process_file(filename)
-        binary_data_with_header = self.add_header(binary_data)
-        print(len(binary_data_with_header))
+    def transmit(self, file, filename, playsound=True):
+        """Encodes and plays the data stored in file. Filename = name of file for header"""
+        binary_data = self.process_file(file)
+        binary_data_with_header = self.add_header(binary_data, filename)
         coded_binary_data = self.ldpc_encode(binary_data_with_header)
         to_transmit = self.ofdm(coded_binary_data)
         chirp_p_s = self.chirp_p_s * 0.1
-        print(len(chirp_p_s))
         known_ofdm_cp_ifft = self.generate_known_ofdm_block_cp_ifft()
         to_transmit = self.assemble_all(to_transmit, chirp_p_s, known_ofdm_cp_ifft)
-        print(len(to_transmit))
         if playsound:
             self.play_sound(to_transmit)
         return to_transmit
 
-    def add_header(self, binary_data):
+    def add_header(self, binary_data, filename):
+        """return binary data concatenated with header"""
         null_character = np.zeros(8).astype(int)
-        bits = np.unpackbits(np.frombuffer(b"56840", dtype=np.uint8))
-        file_name = np.unpackbits(np.frombuffer(b"hamlet.txt", dtype=np.uint8))
+        length = str(len(binary_data))
+        bits = np.unpackbits(np.frombuffer(str.encode(length), dtype=np.uint8))
+        file_name = np.unpackbits(np.frombuffer(str.encode(filename), dtype=np.uint8))
         return np.concatenate((null_character, null_character, file_name, null_character, null_character, bits, null_character, null_character, binary_data))
+    
 
 if __name__ == "__main__":
     t = transmitter()
-    print(t.transmit("data/hamlet_in.txt", True))
+    print(t.transmit("data/beeee.txt", "beeee.txt", True))
 

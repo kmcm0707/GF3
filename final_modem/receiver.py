@@ -41,9 +41,9 @@ class receiver(audio_modem):
         alldata = data
 
         if position == "start":
-            data = data[:300000] # Ensure only capture the first chirp
+            data = data[:200000] # Ensure only capture the first chirp
         elif position == "end":
-            data = data[500000:] # Ensure only capture the last chirp
+            data = data[200000:] # Ensure only capture the last chirp
 
         cross_correlation = scipy.signal.correlate(data, self.chirp ,mode='full', method='fft')
         cross_correlation = np.array(cross_correlation)
