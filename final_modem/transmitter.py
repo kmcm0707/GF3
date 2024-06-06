@@ -145,12 +145,14 @@ class transmitter(audio_modem):
         to_transmit = self.assemble_all(to_transmit, chirp_p_s, known_ofdm_cp_ifft)
         if playsound:
             self.play_sound(to_transmit)
+        print("Number of samples:", len(to_transmit))
         return to_transmit
 
     def add_header(self, binary_data, filename):
         """return binary data concatenated with header"""
         null_character = np.zeros(8).astype(int)
         length = str(len(binary_data))
+        print("Length:", length)
         bits = np.unpackbits(np.frombuffer(str.encode(length), dtype=np.uint8))
         file_name = np.unpackbits(np.frombuffer(str.encode(filename), dtype=np.uint8))
         return np.concatenate((null_character, null_character, file_name, null_character, null_character, bits, null_character, null_character, binary_data))
@@ -158,5 +160,5 @@ class transmitter(audio_modem):
 
 if __name__ == "__main__":
     t = transmitter()
-    print(t.transmit("data/beeee.txt", "beeee.txt", True))
+    print(t.transmit("data/knack.tiff", "knack.tiff", True))
 
