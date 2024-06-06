@@ -6,3 +6,4 @@ ldpc_jossy/py/ldpc.py # git update-index --assume-unchanged py/ldpc.py     - to 
 reports/
 .vscode/
 final_modem/outputs/**
+final_modem/bin/
